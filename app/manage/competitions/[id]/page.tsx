@@ -6,12 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, FilePlus2, Plus, Save, Trash2 } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
+import { TypedDeleteDialog } from "@/app/components/TypedDeleteDialog";
 import { MarkdownEditor } from "@/app/components/MarkdownEditor";
 import { useSession } from "@/app/components/SessionProvider";
 import { useToast } from "@/app/components/ToastProvider";
 import { EmptyState, FieldError, PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import { api, formatApiError, jsonBody } from "@/app/lib/api";
-import type { Competition, Track } from "@/app/lib/domain";
+import type { Competition, CompetitionDeletionImpact, Track } from "@/app/lib/domain";
+import { competitionImpactItems } from "@/app/lib/deletionLabels";
 import { validateForm } from "@/app/lib/formValidation";
 import { beijingDateTimeLocal, beijingLocalToIso } from "@/app/lib/time";
 import { useApiResource } from "@/app/lib/useApiResource";
@@ -46,7 +48,42 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [impact, setImpact] = useState<CompetitionDeletionImpact | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
+  const [impactError, setImpactError] = useState("");
+  const [archiving, setArchiving] = useState(false);
   const toast = useToast();
+
+  async function openDelete() {
+    setDeleteOpen(true);
+    setDeleteError("");
+    setImpact(null);
+    setImpactError("");
+    setImpactLoading(true);
+    try {
+      setImpact(await api<CompetitionDeletionImpact>(`/manage/competitions/${competition.id}/deletion-impact`));
+    } catch (requestError) {
+      setImpactError(formatApiError(requestError));
+    } finally {
+      setImpactLoading(false);
+    }
+  }
+
+  async function archiveInstead() {
+    setArchiving(true);
+    setDeleteError("");
+    try {
+      await api(`/manage/competitions/${competition.id}`, { method: "PATCH", ...jsonBody({ status: "archived" }) });
+      setStatus("archived");
+      setDeleteOpen(false);
+      await reload();
+      toast.success("赛事已归档");
+    } catch (requestError) {
+      setDeleteError(formatApiError(requestError));
+    } finally {
+      setArchiving(false);
+    }
+  }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -81,11 +118,15 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
     }
   }
 
-  async function remove() {
+  async function remove(confirm: string) {
     setDeleting(true);
     setDeleteError("");
     try {
-      await api(`/manage/competitions/${competition.id}`, { method: "DELETE" });
+      await api(`/manage/competitions/${competition.id}`, {
+        method: "DELETE",
+        headers: { "X-Confirm": encodeURIComponent(confirm) },
+        ...jsonBody({ confirm }),
+      });
       toast.success("赛事已删除");
       onDeleted();
     } catch (requestError) {
@@ -105,7 +146,7 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
           <h2>赛事设置</h2>
         </div>
         <div className="manage-row-actions">
-          <button type="button" className="danger-button subtle compact-button" onClick={() => setDeleteOpen(true)}><Trash2 size={14} />删除赛事</button>
+          <button type="button" className="danger-button subtle compact-button" onClick={() => void openDelete()}><Trash2 size={14} />删除赛事</button>
           <button className="primary-button compact-button"><Save size={15} />保存赛事</button>
         </div>
       </div>
@@ -130,7 +171,22 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
       <FieldError>{error}</FieldError>
       {checkpoints.length > 0 && <section><h3>Checkpoint 进度记录</h3><p>仅用于交流反馈，不扣自测次数。留空日期显示“待公布”。</p><div className="form-grid">{checkpoints.map((point, index) => <label className="form-field" key={point.id}><span>{point.label} · 截止时间</span><input type="datetime-local" value={localDate(point.due_at)} onChange={(event) => setCheckpoints(checkpoints.map((item, i) => i === index ? { ...item, due_at: isoDate(event.target.value) } : item))} /></label>)}</div><Link href="/manage/checkpoints" className="text-button">查看队伍进度与填写反馈 <ArrowRight size={15} /></Link></section>}
     </form>
-    <ConfirmDialog open={deleteOpen} title={`删除赛事“${competition.name}”？`} description="没有参赛记录时，赛事及其赛道和赛题会一并删除。已有队伍、报名或成绩的赛事只能归档。" busy={deleting} error={deleteError} onCancel={() => { setDeleteOpen(false); setDeleteError(""); }} onConfirm={() => void remove()} />
+    <TypedDeleteDialog
+      open={deleteOpen}
+      title={`删除赛事“${competition.name}”？`}
+      warning="删除不可恢复，赛事下的赛道、赛题、队伍、报名、作品、评审、成绩、测评记录和上传文件都会被永久删除。强烈建议先归档：归档会保留全部数据，只是不再对外开放。"
+      impactItems={impact ? competitionImpactItems(impact.counts) : []}
+      loading={impactLoading}
+      loadError={impactError}
+      blockers={impact?.blockers.map((item) => item.message) ?? []}
+      expected={impact?.confirm_text ?? competition.slug}
+      inputLabel="请输入赛事 URL 标识以确认"
+      busy={deleting}
+      error={deleteError}
+      secondaryAction={impact?.archive.available && competition.status !== "archived" ? { label: "改为归档", onClick: () => void archiveInstead(), busy: archiving } : undefined}
+      onCancel={() => { setDeleteOpen(false); setDeleteError(""); }}
+      onConfirm={(text) => void remove(text)}
+    />
   </>;
 }
 

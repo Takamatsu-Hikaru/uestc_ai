@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import secrets
+from urllib.parse import unquote
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import db
+from ..deletion import (DeletionBlocked, competition_impact, delete_competition_cascade, delete_user_cascade,
+                        has_participation, user_impact)
 from ..ai_models import AIGrant
 from ..judge_models import JudgePool
 from ..ai_quotas import lock_competition, lock_problem, remove_unused_grants
@@ -187,26 +192,60 @@ def update_competition(competition_id: str):
     return jsonify(admin_competition(competition))
 
 
+def confirmation_value():
+    data = request.get_json(silent=True)
+    value = data.get("confirm") if isinstance(data, dict) else None
+    if value is None and request.headers.get("X-Confirm") is not None:
+        value = unquote(request.headers["X-Confirm"])
+    return value
+
+
+def confirmation_error(expected: str, ignore_case: bool = False):
+    value = confirmation_value()
+    if not isinstance(value, str) or not value.strip():
+        return jsonify({"error": "confirmation required"}), 400
+    if len(value) > 255:
+        return jsonify({"error": "confirmation does not match"}), 400
+    matches = value.strip().lower() == expected.strip().lower() if ignore_case else value == expected
+    if not matches:
+        return jsonify({"error": "confirmation does not match"}), 400
+    return None
+
+
+ADMIN_REQUIRED_ERROR = "administrator required to delete competitions with participation data"
+
+
+@manage_bp.get("/manage/competitions/<competition_id>/deletion-impact")
+@require_user("admin", "organizer")
+def competition_deletion_impact(competition_id: str):
+    competition = db.session.get(Competition, competition_id)
+    if not competition:
+        return jsonify({"error": "competition not found"}), 404
+    return jsonify(competition_impact(competition, current_user()))
+
+
 @manage_bp.delete("/manage/competitions/<competition_id>")
 @require_user("admin", "organizer")
 def delete_competition(competition_id: str):
     competition = db.session.get(Competition, competition_id)
     if not competition:
         return jsonify({"error": "competition not found"}), 404
-    if (
-        Team.query.filter_by(competition_id=competition.id).first()
-        or Registration.query.filter_by(competition_id=competition.id).first()
-        or ScoreBatch.query.filter_by(competition_id=competition.id).first()
-    ):
-        return jsonify({"error": "competition has participation records"}), 409
-    lock_competition(competition.id)
-    if JudgePool.query.join(Problem).join(Track).filter(Track.competition_id == competition.id).first():
-        return jsonify({"error": "赛事已绑定专用 GPU 测评实例，请先停用并解除测评绑定。"}), 409
-    audit("competition.deleted", "competition", competition.id, {"name": competition.name, "slug": competition.slug})
-    db.session.delete(competition)
-    db.session.commit()
+    actor = current_user()
+    if actor.role != "admin" and has_participation(competition):
+        return jsonify({"error": ADMIN_REQUIRED_ERROR}), 403
+    invalid = confirmation_error(competition.slug)
+    if invalid:
+        return invalid
+    try:
+        delete_competition_cascade(competition, actor)
+    except DeletionBlocked as blocked:
+        db.session.rollback()
+        return jsonify({"error": blocked.error}), 409
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Competition deletion failed")
+        return jsonify({"error": "deletion failed"}), 500
     return "", 204
-
 
 @manage_bp.patch("/manage/tracks/<track_id>")
 @require_user("admin", "organizer")
@@ -599,6 +638,41 @@ def update_user(user_id: str):
     return jsonify(user.to_dict())
 
 
+@manage_bp.get("/admin/users/<user_id>/deletion-impact")
+@require_user("admin")
+def user_deletion_impact(user_id: str):
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+    return jsonify(user_impact(user, current_user()))
+
+
+@manage_bp.delete("/admin/users/<user_id>")
+@require_user("admin")
+def delete_user(user_id: str):
+    actor = current_user()
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+    if user.id == actor.id:
+        return jsonify({"error": "cannot delete your own account"}), 400
+    admin_ids = db.session.execute(select(User.id).where(User.role == "admin").order_by(User.id).with_for_update()).scalars().all()
+    if user.role == "admin" and len(admin_ids) <= 1:
+        return jsonify({"error": "cannot delete the last administrator"}), 400
+    invalid = confirmation_error(user.email, ignore_case=True)
+    if invalid:
+        return invalid
+    try:
+        delete_user_cascade(user, actor)
+    except DeletionBlocked as blocked:
+        db.session.rollback()
+        return jsonify({"error": blocked.error}), 409
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("User deletion failed")
+        return jsonify({"error": "deletion failed"}), 500
+    return "", 204
+
 @manage_bp.get("/admin/audit")
 @require_user("admin")
 def audit_log():
@@ -611,7 +685,8 @@ def audit_log():
         "entity_type": item.entity_type,
         "entity_id": item.entity_id,
         "actor_id": item.actor_id,
-        "actor_name": actors[item.actor_id].name if item.actor_id and actors.get(item.actor_id) else None,
+        "actor_name": actors[item.actor_id].name if item.actor_id and actors.get(item.actor_id) else (
+            ((item.details or {}).get("actor_snapshot") or (item.details or {}).get("actor") or {}).get("name")),
         "details": item.details,
         "created_at": item.created_at.isoformat(),
     } for item in items])

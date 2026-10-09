@@ -26,6 +26,7 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; }
 ::selection { background: #e8b5a8; color: var(--ink); }
+@media (max-width: 560px) { .typed-delete-dialog .impact-list { grid-template-columns: 1fr; } }
 .sr-only { clip: rect(0, 0, 0, 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
 .app-shell { display: grid; grid-template-columns: 242px minmax(0, 1fr); min-height: 100dvh; }
@@ -45,6 +46,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .app-nav a:hover { background: rgba(255, 255, 255, .5); color: var(--ink); transform: translateX(2px); }
 .app-nav a.active { background: var(--ink); color: var(--paper); }
 .app-nav a.active:hover { transform: none; }
+.external-nav-link .external-nav-icon { color: var(--quiet); margin-left: auto; }
 .sidebar-account { align-items: center; border-top: 1px solid var(--line); display: flex; gap: 9px; margin-top: auto; padding: 16px 6px 0; min-width: 0; }
 .account-avatar { align-items: center; background: var(--coral); border-radius: 50%; color: white; display: flex; flex: 0 0 31px; font-size: 12px; height: 31px; justify-content: center; width: 31px; }
 .account-copy { min-width: 0; }
@@ -138,6 +140,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .confirm-dialog h2 { font-family: Georgia, serif; font-size: 25px; font-weight: 400; letter-spacing: 0; margin: 20px 0 9px; }
 .confirm-dialog p { color: var(--muted); font-size: 13px; line-height: 1.75; margin: 0; }
 .confirm-dialog .field-error { background: #f3e4e1; margin-top: 16px; padding: 10px 12px; }
+.typed-delete-dialog { max-height: calc(100dvh - 40px); max-width: 560px; overflow-y: auto; }
+.typed-delete-dialog .dialog-warning { background: #f3e4e1; border-left: 3px solid var(--danger); color: var(--ink); margin-top: 14px; padding: 10px 12px; }
+.typed-delete-dialog .impact-list { display: grid; gap: 4px 18px; grid-template-columns: 1fr 1fr; list-style: none; margin: 14px 0 0; padding: 0; }
+.typed-delete-dialog .impact-list li { border-bottom: 1px solid var(--line); display: flex; font-size: 12px; justify-content: space-between; padding: 5px 0; }
+.typed-delete-dialog .impact-list strong { font-variant-numeric: tabular-nums; }
+.typed-delete-dialog .confirm-input { display: grid; gap: 6px; margin-top: 16px; }
+.typed-delete-dialog .confirm-input span { color: var(--muted); font-size: 12px; }
+.typed-delete-dialog .confirm-input input { background: var(--surface); border: 1px solid var(--line-dark); padding: 9px 10px; width: 100%; }
+.typed-delete-dialog code { background: var(--paper); padding: 1px 5px; user-select: all; word-break: break-all; }
+.typed-delete-dialog footer { flex-wrap: wrap; }
 .confirm-dialog footer { border-top: 1px solid var(--line); display: flex; gap: 9px; justify-content: flex-end; margin-top: 23px; padding-top: 17px; }
 
 /* Home */
@@ -839,7 +851,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .invite-list div > div > span { color: var(--quiet); font-size: 12px; margin-top: 4px; }
 .admin-intro { align-items: center; }
 .admin-user-list { border-top: 1px solid var(--line); }
-.admin-user-list > div { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 13px; grid-template-columns: 34px minmax(0, 1fr) 95px 190px 18px; min-height: 67px; padding: 9px 3px; }
+.admin-user-list > div { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 13px; grid-template-columns: 34px minmax(0, 1fr) 95px 190px 18px 64px; min-height: 67px; padding: 9px 3px; }
 .admin-user-list > div > div:nth-child(2) { min-width: 0; }
 .admin-user-list strong, .admin-user-list div:nth-child(2) > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-user-list strong { font-size: 12px; }
@@ -874,7 +886,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .track-manage-block { gap: 28px; grid-template-columns: 310px minmax(0, 1fr); }
   .four-fields { grid-template-columns: 1fr 1fr; }
   .score-manage-layout { gap: 34px; grid-template-columns: minmax(0, 680px); }
-  .admin-user-list > div { grid-template-columns: 34px minmax(0, 1fr) 88px 155px 18px; }
+  .admin-user-list > div { grid-template-columns: 34px minmax(0, 1fr) 88px 155px 18px 64px; }
 }
 
 @media (max-width: 820px) {
@@ -918,7 +930,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .invite-admin-layout { grid-template-columns: minmax(0, 1.35fr) minmax(245px, .65fr); }
   .invite-create-panel form { grid-template-columns: minmax(0, 1fr) 110px; }
   .invite-create-panel form > .primary-button { grid-column: 1 / -1; justify-self: start; }
-  .admin-user-list > div { grid-template-columns: 34px minmax(0, 1fr) 82px 150px 18px; }
+  .admin-user-list > div { grid-template-columns: 34px minmax(0, 1fr) 82px 150px 18px 64px; }
 }
 
 @media (max-width: 600px) {
@@ -1049,6 +1061,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-user-list > div > .status-pill { grid-column: 2; justify-self: start; }
   .admin-user-list > div > label { grid-column: 2 / -1; }
   .admin-user-list > div > label + svg, .admin-user-list > div > label + span { grid-column: 3; grid-row: 1; }
+  .admin-user-list > div > .danger-button { grid-column: 2 / -1; justify-self: start; }
   .editor-archive-row > button { grid-template-columns: minmax(0, 1fr) auto; padding-left: 8px; }
   .editor-archive-copy time { display: none; }
   .markdown-editor-label { align-items: flex-start; }

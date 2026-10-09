@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  BookOpen, Cable, FileText, FolderArchive, Home, LoaderCircle, LogIn, LogOut, Menu, Newspaper,
+  BookMarked, BookOpen, Cable, ExternalLink, FileText, FolderArchive, Home, LoaderCircle, LogIn, LogOut, Menu, Newspaper,
   PenLine, Scale, Trophy, UserRound, Users, X,
 } from "lucide-react";
 import { useSession } from "@/app/components/SessionProvider";
@@ -14,6 +14,7 @@ import { EasterEggEntrance } from "@/app/components/EasterEggEntrance";
 import { FooterCodeDivider } from "@/app/components/FooterCodeDivider";
 import { useToast } from "@/app/components/ToastProvider";
 import { formatApiError } from "@/app/lib/api";
+import { WIKI_LABEL, WIKI_URL } from "@/app/lib/links";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -104,7 +105,8 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return <Link key={href} href={href} className={active ? "active" : ""} onClick={() => setMenuOpen(false)}><Icon size={17} strokeWidth={1.7} /><span>{label}</span></Link>;
           })}
-        <a href="https://wiki.uestcai.top/" target="_blank" rel="noreferrer"><BookOpen size={17} strokeWidth={1.7} /><span>入门指南</span></a></nav>
+          <a className="external-nav-link" href={WIKI_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}><BookMarked size={17} strokeWidth={1.7} /><span>{WIKI_LABEL}</span><ExternalLink className="external-nav-icon" size={13} aria-hidden="true" /><span className="sr-only">（在新标签页打开）</span></a>
+        </nav>
         {workspaceNavigation.length > 0 && <><span className="nav-label workspace-nav-label">WORKSPACE</span><nav className="app-nav" aria-label="工作区导航">{workspaceNavigation.map(({ href, label, icon: Icon }) => {
           const active = href === "/manage/competitions"
             ? pathname.startsWith("/manage/competitions") || pathname.startsWith("/manage/problems")
@@ -163,7 +165,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
                 <strong>社区</strong>
                 <Link href="/news">最新动态</Link>
                 <Link href="/about">关于我们</Link>
-                <a href="https://wiki.uestcai.top/" target="_blank" rel="noreferrer">入门指南</a>
+                <a href={WIKI_URL} target="_blank" rel="noopener noreferrer">{WIKI_LABEL}<span className="sr-only">（在新标签页打开）</span></a>
                 <Link href="/dashboard">个人工作台</Link>
                 <Link href="/login">登录账户</Link>
               </nav>

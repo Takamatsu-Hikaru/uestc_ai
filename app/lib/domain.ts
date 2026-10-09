@@ -357,3 +357,22 @@ export type AuditEntry = {
 };
 
 export type ProblemDetail = Problem & { track: Track; competition: Competition };
+export type DeletionBlocker = { code: string; message: string };
+export type CompetitionDeletionImpact = {
+  competition: { id: string; slug: string; name: string; status: string };
+  confirm_text: string;
+  has_participation: boolean;
+  can_delete: boolean;
+  blockers: DeletionBlocker[];
+  archive: { available: boolean; current_status: string };
+  counts: Record<string, number>;
+};
+export type UserDeletionImpact = {
+  user: { id: string; email: string; name: string; role: string };
+  confirm_text: string;
+  guards: { is_self: boolean; is_last_admin: boolean };
+  can_delete: boolean;
+  blockers: DeletionBlocker[];
+  recommendation: string;
+  counts: Record<string, number>;
+};

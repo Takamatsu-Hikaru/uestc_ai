@@ -1021,7 +1021,8 @@ class PlatformApiTestCase(unittest.TestCase):
 
         self.assertEqual(self.admin.delete(f"/api/manage/problems/{problem['id']}").status_code, 204)
         self.assertEqual(self.admin.delete(f"/api/manage/tracks/{track['id']}").status_code, 204)
-        self.assertEqual(self.admin.delete(f"/api/manage/competitions/{competition['id']}").status_code, 204)
+        self.assertEqual(self.admin.delete(f"/api/manage/competitions/{competition['id']}").status_code, 400)
+        self.assertEqual(self.admin.delete(f"/api/manage/competitions/{competition['id']}", json={"confirm": "delete-test"}).status_code, 204)
 
         content = self.admin.post("/api/content", json={
             "kind": "blog",
@@ -1059,13 +1060,13 @@ class PlatformApiTestCase(unittest.TestCase):
         self.login(self.admin, "admin@uestcai.top")
         problem_delete = self.admin.delete(f"/api/manage/problems/{protected_problem['id']}")
         track_delete = self.admin.delete(f"/api/manage/tracks/{protected_track['id']}")
-        competition_delete = self.admin.delete(f"/api/manage/competitions/{protected_competition['id']}")
+        competition_delete = self.admin.delete(f"/api/manage/competitions/{protected_competition['id']}", json={"confirm": protected_competition["slug"]})
         self.assertEqual(problem_delete.status_code, 409)
         self.assertEqual(problem_delete.get_json()["error"], "problem has submissions")
         self.assertEqual(track_delete.status_code, 409)
         self.assertEqual(track_delete.get_json()["error"], "track has participation records")
-        self.assertEqual(competition_delete.status_code, 409)
-        self.assertEqual(competition_delete.get_json()["error"], "competition has participation records")
+        # Competitions with participation data are now deletable by admins after typed confirmation.
+        self.assertEqual(competition_delete.status_code, 204)
 
     def test_member_can_remove_only_uncommitted_participation_records(self):
         self.login(self.admin, "admin@uestcai.top")
