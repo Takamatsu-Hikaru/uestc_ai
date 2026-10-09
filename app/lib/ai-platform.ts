@@ -10,7 +10,8 @@ export type AIChannel = {
   id: string; name: string; base_url: string; protocol: "openai" | "anthropic" | "custom";
   models: Record<string, string>; disabled_models: string[]; enabled: boolean;
   weight: number; priority: number; input_price: number; output_price: number; key_count: number;
-  last_test: { ok: boolean; at: string; models: string[] } | null;
+  // Older records may lack `models` (written by maintenance scripts), so it stays optional.
+  last_test: { ok: boolean; at: string; models?: string[]; note?: string } | null;
 };
 export type AIKey = { id: string; grant_id: string; name: string; prefix: string; enabled: boolean; created_at: string };
 export type AIModel = { id: string; protocols: string[]; input_price: number; output_price: number };
