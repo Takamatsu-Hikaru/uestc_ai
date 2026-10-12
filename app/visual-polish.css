@@ -55,7 +55,7 @@
 .public-shell .track-card > .club-track-visual { height:208px; min-height:208px; width:100%; }
 .public-shell .track-card > div,.public-shell .track-card > footer { margin-left:24px; margin-right:24px; }
 .public-shell .track-card > div { margin-top:0 !important; }
-.public-shell .track-card > .track-card-top { justify-content:flex-start; gap:14px; }
+.public-shell .track-card > .track-card-top { justify-content:flex-start !important; gap:14px; }
 .public-shell:has(.home-updates) .flagship-section .track-card h3 { color:var(--ink); font-weight:750; font-size:25px; }
 .public-shell:has(.home-updates) .flagship-section .track-card p { color:var(--muted); line-height:1.75; }
 .public-shell .track-card small,.public-shell .track-card .track-card-top { color:var(--muted); }
@@ -165,6 +165,7 @@
 .public-shell:has(.home-updates) .news-showcase .update-visual > .article-cover img { height:100%; min-height:0; }
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:360px; min-height:0; aspect-ratio:auto; }
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:190px; }
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual { display:none !important; }
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual::before,
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual::after,
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual > span,
