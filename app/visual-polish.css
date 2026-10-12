@@ -183,7 +183,7 @@
 .public-shell .home-competition-feature .competition-feature-copy h3 { font-weight:750; }
 
 /* Wujie introduction, prizes and original PDF. */
-.public-shell .footer-bottom { font-size:14px; }
+.public-shell .footer-bottom { font-size:13px; }
 .public-shell .footer-bottom > span a { color:var(--coral); font-weight:700; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px; }
 .public-shell .footer-bottom > span a:hover { color:var(--ink); }
 .wujie-intro-actions { display:flex; gap:22px; align-items:center; flex-wrap:wrap; }
