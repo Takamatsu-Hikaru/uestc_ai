@@ -8,6 +8,7 @@ import "./public-detail.css";
 import "./unified-ui.css";
 import "./community.css";
 import "./api-platform/platform.css";
+import "./visual-polish.css";
 
 export const metadata: Metadata = {
   title: "UESTC AI 社 | 赛事与作品档案",

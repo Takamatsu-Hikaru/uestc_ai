@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, CalendarDays, Code2 } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { RevealSection } from "@/app/components/RevealSection";
 import { ScrollFilmIntro } from "@/app/components/ScrollFilmIntro";
+import { TrackVisual } from "@/app/components/ClubVisuals";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import { api, formatApiError } from "@/app/lib/api";
 import type { Competition, ContentItem, Track } from "@/app/lib/domain";
@@ -177,6 +178,7 @@ export default function Home() {
             <div className="track-grid">
               {(competition.tracks ?? []).map((track, index) => (
                 <Link data-reveal-item className={`track-card track-${trackAccent(track, index)}`} key={track.id} href={`/competitions/${competition.slug}/tracks/${track.slug}`}>
+                  <TrackVisual value={`${track.name} ${track.slug}`} />
                   <div className="track-card-top"><span>{String(index + 1).padStart(2, "0")}</span><Code2 size={18} strokeWidth={1.5} /></div>
                   <div><small>{track.config?.short ?? "TRACK"}</small><h3>{track.name}</h3><p>{track.description}</p></div>
                   <footer><span>{track.problems?.length ?? 0} 个题目</span><ArrowRight size={16} /></footer>

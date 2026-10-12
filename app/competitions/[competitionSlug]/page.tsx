@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { ArrowRight, CalendarDays, Users } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { Markdown } from "@/app/components/Markdown";
+import { TrackVisual } from "@/app/components/ClubVisuals";
 import { PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import type { Competition } from "@/app/lib/domain";
 import { formatBeijing } from "@/app/lib/time";
@@ -36,6 +37,7 @@ export default function CompetitionPage() {
             <div className="track-directory">
               {(data.tracks ?? []).map((track, index) => (
                 <Link key={track.id} href={`/competitions/${data.slug}/tracks/${track.slug}`}>
+                  <TrackVisual value={`${track.name} ${track.slug}`} />
                   <span className="track-number">{String(index + 1).padStart(2, "0")}</span>
                   <div><small>{track.config?.short ?? "TRACK"}</small><h3>{track.name}</h3><p>{track.description}</p></div>
                   <span className="track-count">{track.problems?.length ?? 0} 个题目</span>
