@@ -36,6 +36,8 @@
 .public-shell .update-featured-visual .article-cover img { object-fit:contain; padding:22px; background:linear-gradient(115deg,#e5ecd8,#f2f1e5); }
 .public-shell .update-featured-info strong { font-weight:750; }
 .public-shell .update-featured-info { background:#fff; }
+.public-shell .update-visual .article-cover.cover-icon { min-height:100%; background:radial-gradient(circle at 78% 22%,#dce8d5,#eef3e8 48%,#e6eee0); color:#1f5440; }
+.public-shell .update-visual .article-cover.cover-icon svg { width:72px; height:72px; }
 .public-shell .update-featured { border:1px solid #e1e7df; border-radius:10px; overflow:hidden; }
 .public-shell .home-manifesto .manifesto-card > span { display:flex; align-items:center; gap:12px; color:#496650; }
 .public-shell .home-manifesto .manifesto-card > span svg { position:static; }
@@ -52,6 +54,7 @@
 .public-shell:has(.home-updates) .flagship-section .track-card:is(.track-coral,.track-ink,.track-sage,.track-sand) { background:#fff; border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:0 0 22px; overflow:hidden; gap:18px; }
 .public-shell .track-card > .club-track-visual { height:208px; min-height:208px; width:100%; }
 .public-shell .track-card > div,.public-shell .track-card > footer { margin-left:24px; margin-right:24px; }
+.public-shell .track-card > div { margin-top:0 !important; }
 .public-shell:has(.home-updates) .flagship-section .track-card h3 { color:var(--ink); font-weight:750; font-size:25px; }
 .public-shell:has(.home-updates) .flagship-section .track-card p { color:var(--muted); line-height:1.75; }
 .public-shell .track-card small,.public-shell .track-card .track-card-top { color:var(--muted); }
