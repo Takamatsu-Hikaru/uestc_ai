@@ -13,10 +13,23 @@ export interface ComputePrivateImages {
   images: { id: string; name: string; ready: boolean }[];
   page: number; has_more: boolean;
 }
-export interface ComputeConfig {
+export interface ManagedComputeConfig {
+  mode?: "managed";
   provider_id: string; enabled: boolean; max_gpu_seconds: number; max_cost_millis: number | null;
 }
-export interface ComputeGrant extends ComputeConfig {
+export interface ManualComputeConfig {
+  mode: "manual_account"; enabled: boolean; login_url: string; instructions: string;
+}
+export type ComputeConfig = ManagedComputeConfig | ManualComputeConfig;
+export interface ManualComputeAccount {
+  id: string | null; team_id: string; team_name: string; problem_id: string; problem_title: string;
+  competition_name: string; enabled: boolean; account_enabled: boolean; status: "pending" | "issued" | "paused";
+  login_url: string; instructions: string; updated_at: string | null;
+}
+export interface ComputeAccountCredentials {
+  username: string; password: string; notes: string; login_url: string;
+}
+export interface ComputeGrant extends ManagedComputeConfig {
   id: string; team_id: string; team_name: string; problem_id: string; problem_title: string;
   competition_name: string; provider_name: string; gpu_label: string; gpu_count: number;
   hourly_price_millis: number; gpu_seconds_used: number; cost_used_millis: number;
@@ -34,6 +47,7 @@ export interface ComputeSession {
 }
 export interface ComputeOverview {
   grants: ComputeGrant[]; instances: ComputeInstance[]; sessions: ComputeSession[]; active_sessions: ComputeSession[]; worker_online: boolean;
+  manual_accounts: ManualComputeAccount[];
   summary: { gpu_seconds: number; cost_millis: number };
 }
 export const gpuHours = (seconds: number) => (seconds / 3600).toLocaleString("zh-CN", { maximumFractionDigits: 3 });

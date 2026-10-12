@@ -15,7 +15,7 @@ from . import public_cache
 from .ai_models import AIGrant, AIKey, AIProblemQuota, AIUsage
 from .ai_quotas import lock_competition
 from .compute import ACTIVE_STATES, STOPPED_STATES
-from .compute_models import ComputeGrant, ComputeInstance, ComputePolicy, ComputeSession
+from .compute_models import ComputeAccount, ComputeGrant, ComputeInstance, ComputePolicy, ComputeSession
 from .extensions import db
 from .judge_models import JudgePool
 from .models import (
@@ -35,6 +35,8 @@ BLOCKERS = {
     "active_compute_sessions": ("active compute sessions exist", "存在进行中的算力会话，请先停止。"),
     "remote_instance_not_stopped": ("remote compute instances not stopped",
                                     "远端算力实例尚未确认停止，请先在算力管理中停止。"),
+    "manual_compute_accounts": ("存在手动发放的算力账号记录，请保留所属队伍或归档赛事。",
+                                "存在手动发放的算力账号记录，请保留所属队伍或归档赛事。"),
     "locked_reviews": ("user has reviews in locked competitions",
                        "该用户在已锁定评分的赛事中有已提交评审，无法删除。"),
     "team_in_locked_competition": ("user team in locked or scored competition",
@@ -87,6 +89,8 @@ class _Scope:
 
     def blockers(self):
         found = []
+        if _count(ComputeAccount, or_(self.T(ComputeAccount.team_id), self.P(ComputeAccount.problem_id))):
+            found.append(_blocker("manual_compute_accounts"))
         if self.problems is not None and _count(JudgePool, JudgePool.problem_id.in_(self.problems)):
             found.append(_blocker("judge_pool"))
         if _count(ComputeSession, ComputeSession.grant_id.in_(self.cgrant_sel), ComputeSession.state.in_(ACTIVE_STATES)):
@@ -127,6 +131,7 @@ class _Scope:
             "compute_grants": _count(ComputeGrant, ComputeGrant.id.in_(self.cgrant_sel)),
             "compute_instances": _count(ComputeInstance, ComputeInstance.grant_id.in_(self.cgrant_sel)),
             "compute_sessions": _count(ComputeSession, ComputeSession.grant_id.in_(self.cgrant_sel)),
+            "manual_compute_accounts": _count(ComputeAccount, or_(self.T(ComputeAccount.team_id), self.P(ComputeAccount.problem_id))),
         }
 
     def delete_all(self):

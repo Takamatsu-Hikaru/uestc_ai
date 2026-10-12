@@ -8,7 +8,8 @@ from sqlalchemy import or_, update
 from .ai_gateway import GatewayError
 from .ai_quotas import lock_problem
 from .autodl import AutoDL
-from .compute_models import (ComputeGrant, ComputeInstance, ComputePolicy, ComputeProvider,
+from .compute_accounts import delivery_mode
+from .compute_models import (ComputeAccount, ComputeGrant, ComputeInstance, ComputePolicy, ComputeProvider,
                              ComputeSession, ComputeWorkerHeartbeat)
 from .extensions import db
 from .models import Problem, Track, utcnow
@@ -35,7 +36,8 @@ def heartbeat(worker_id):
 
 def apply_config(grant, config):
     for name, value in config.items():
-        setattr(grant, name, value)
+        if name in {"provider_id", "enabled", "max_gpu_seconds", "max_cost_millis"}:
+            setattr(grant, name, value)
 
 
 def provision_compute(team):
@@ -44,13 +46,18 @@ def provision_compute(team):
     for (problem_id,) in ids:
         lock_problem(problem_id)
         policy = db.session.get(ComputePolicy, problem_id, populate_existing=True)
-        if policy and not ComputeGrant.query.filter_by(team_id=team.id, problem_id=problem_id).first():
+        if (policy and delivery_mode(policy.config) == "managed"
+                and not ComputeGrant.query.filter_by(team_id=team.id, problem_id=problem_id).first()):
             grant = ComputeGrant(team_id=team.id, problem_id=problem_id)
             apply_config(grant, policy.config)
             db.session.add(grant)
 
 
 def remove_unused_compute(team_id=None, problem_ids=None):
+    accounts = ComputeAccount.query
+    accounts = accounts.filter_by(team_id=team_id) if team_id else accounts.filter(ComputeAccount.problem_id.in_(problem_ids or []))
+    if accounts.first():
+        return False
     query = ComputeGrant.query
     query = query.filter_by(team_id=team_id) if team_id else query.filter(ComputeGrant.problem_id.in_(problem_ids or []))
     grants = query.order_by(ComputeGrant.id).with_for_update().all()
@@ -75,6 +82,9 @@ def reserve_start(grant_id, user_id, request_id, seconds):
     target = db.session.get(ComputeGrant, grant_id)
     lock_problem(target.problem_id)
     db.session.refresh(target)
+    policy = db.session.get(ComputePolicy, target.problem_id, populate_existing=True)
+    if policy and delivery_mode(policy.config) != "managed":
+        raise GatewayError("本题采用手动账号发放，请登录 AutoDL 使用账号。", 409, "manual_account_delivery")
     db.session.execute(update(ComputeProvider).where(ComputeProvider.id == target.provider_id).values(enabled=ComputeProvider.enabled))
     db.session.refresh(target.provider)
     grant = lock_grant(grant_id)

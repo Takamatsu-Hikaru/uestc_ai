@@ -44,6 +44,28 @@ class ProblemSetupTests(unittest.TestCase):
     def document(self):
         return {"evaluation_config": deepcopy(self.config), "runtime": deepcopy(self.runtime_config), "ai": deepcopy(self.ai_config), "compute": deepcopy(self.compute_config)}
 
+    def test_manual_account_setup_readiness_and_package_roundtrip_need_no_provider(self):
+        self.prepare()
+        data = self.document()
+        data["compute"] = {"mode": "manual_account", "enabled": True,
+                           "login_url": "https://www.autodl.com/login", "instructions": "Use training image"}
+        with self.app.app_context():
+            ComputeProvider.query.delete(); db.session.commit()
+        saved = self.admin.put(self.url, json=data)
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        check = next(c for c in saved.get_json()["checks"] if c["key"] == "compute")
+        self.assertEqual(check["state"], "ready")
+        export = self.admin.get(f"/api/manage/problems/{self.problem['id']}/package")
+        with zipfile.ZipFile(io.BytesIO(export.data)) as archive:
+            manifest = json.loads(archive.read("problem.json"))
+            manifest["problem"].update(code="MANUAL-IMPORT", slug="manual-import")
+            files = {n: archive.read(n) for n in archive.namelist() if n != "problem.json"}
+            self.assertNotIn("provider", json.loads(files["connections.json"]))
+        imported = self.upload(f"/api/manage/tracks/{self.problem['track_id']}/problem-packages", self.package(manifest, files))
+        self.assertEqual(imported.status_code, 201, imported.get_json())
+        configuration = self.admin.get(f"/api/manage/problems/{imported.get_json()['id']}/setup").get_json()["config"]
+        self.assertEqual(configuration["compute"], data["compute"])
+
     def test_robot_runtime_private_snapshot_and_missing_environment_guard(self):
         from build_robot_arm_package import default_scenes
         self.prepare()

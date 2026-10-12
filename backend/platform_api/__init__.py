@@ -19,6 +19,7 @@ from .routes.evaluations import evaluations_bp
 from .routes.evaluation_trials import evaluation_trials_bp
 from .routes.ai import ai_bp
 from .routes.compute import compute_bp
+from .routes.compute_accounts import compute_accounts_bp
 from .routes.problem_setup import setup_bp
 from .routes.profiles import profiles_bp
 from .routes.checkpoints import checkpoints_bp
@@ -153,6 +154,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(evaluation_trials_bp, url_prefix="/api")
     app.register_blueprint(ai_bp, url_prefix="/api")
     app.register_blueprint(compute_bp, url_prefix="/api")
+    app.register_blueprint(compute_accounts_bp, url_prefix="/api")
     app.register_blueprint(setup_bp, url_prefix="/api")
     app.register_blueprint(content_bp, url_prefix="/api")
     app.register_blueprint(profiles_bp, url_prefix="/api")

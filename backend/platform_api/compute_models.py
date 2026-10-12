@@ -32,6 +32,19 @@ class ComputePolicy(TimestampMixin, db.Model):
     problem = db.relationship("Problem", back_populates="compute_policy")
 
 
+class ComputeAccount(TimestampMixin, db.Model):
+    """Manually issued team credentials; never serialized with the secret."""
+    __tablename__ = "compute_accounts"
+    __table_args__ = (db.UniqueConstraint("team_id", "problem_id", name="uq_compute_account_team_problem"),)
+    id = db.Column(db.String(36), primary_key=True, default=new_id)
+    team_id = db.Column(db.String(36), db.ForeignKey("teams.id"), nullable=False, index=True)
+    problem_id = db.Column(db.String(36), db.ForeignKey("problems.id"), nullable=False, index=True)
+    secret = db.Column(db.Text, nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    team = db.relationship("Team")
+    problem = db.relationship("Problem")
+
+
 class ComputeGrant(TimestampMixin, db.Model):
     __tablename__ = "compute_grants"
     __table_args__ = (db.UniqueConstraint("team_id", "problem_id", name="uq_compute_grant_team_problem"),)

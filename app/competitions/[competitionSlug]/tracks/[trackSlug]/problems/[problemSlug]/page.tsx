@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Cpu, ExternalLink, FileCheck2, Gauge, Scale } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
-import { TrackVisual } from "@/app/components/ClubVisuals";
 import { Markdown } from "@/app/components/Markdown";
 import { PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import type { ProblemDetail } from "@/app/lib/domain";
@@ -24,7 +23,7 @@ export default function ProblemPage() {
     <AppShell variant="detail" title={data?.title ?? "题目详情"} eyebrow={data?.code ?? "PROBLEM"} actions={<Link className="outline-button" href={`/competitions/${competitionSlug}/tracks/${trackSlug}`}><ArrowLeft size={15} />返回赛道</Link>}>
       {loading ? <PageLoading /> : error || !data ? <PageError message={error || "题目不存在。"} retry={reload} /> : (
         <div className="problem-layout">
-          <div className="problem-content"><TrackVisual value={trackSlug} className="problem-detail-hero" source />
+          <div className="problem-content">
             <div className="problem-summary"><StatusPill tone={data.status === "published" ? "live" : "warm"}>{data.status === "published" ? "正式赛题" : "候选题目"}</StatusPill><p>{data.summary}</p></div>
             <Markdown>{stripRepeatedLead(data.statement_md ?? "题面正在整理。", data.title, data.summary)}</Markdown>
             <section className="detail-section"><h2>提交材料</h2><div className="requirement-list">{(data.submission_schema.fields ?? []).map((field) => { const spec = data.submission_schema.field_definitions?.[field]; return <div key={field}><FileCheck2 size={16} /><span><strong>{spec?.label || fieldLabels[field] || field}{spec?.required ? "（必填）" : ""}</strong><small>{spec?.help || "在作品表单中填写"}</small></span></div>; })}{data.submission_schema.attachments?.map((item) => <div key={`attachment-${item.key}`}><FileCheck2 size={16} /><span><strong>{item.label}{item.min_count > 0 ? "（必交）" : "（可选）"}</strong><small>{item.extensions.map((ext) => `.${ext}`).join(" / ")}；{item.min_count}—{item.max_count} 个附件</small></span></div>)}</div></section>

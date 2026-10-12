@@ -9,6 +9,7 @@ from ..ai_gateway import GatewayError, encrypt_keys
 from ..ai_quotas import lock_competition, lock_problem
 from ..autodl import AutoDL, validate_base
 from ..compute import ACTIVE_STATES, apply_config, aware, reserve_start, worker_online
+from ..compute_accounts import delivery_mode, manual_overview, manual_policy_values
 from ..compute_models import ComputeGrant, ComputeInstance, ComputePolicy, ComputeProvider, ComputeSession
 from ..compute_catalog import SOURCE, GPU_SPECS, PUBLIC_IMAGES, DATA_CENTERS
 from ..compute_tools import snapshot_tools
@@ -65,12 +66,16 @@ def boolean(data, name, default=True):
 def overview():
     grants = scope().order_by(ComputeGrant.created_at.desc()).all()
     ids = [grant.id for grant in grants]
-    return jsonify({"grants": [grant.to_dict() for grant in grants],
+    response = jsonify({"grants": [grant.to_dict() for grant in grants
+                                   if delivery_mode(grant.problem.compute_policy.config if grant.problem.compute_policy else None) == "managed"],
+        "manual_accounts": manual_overview(current_user()),
         "instances": [i.to_dict() for i in ComputeInstance.query.filter(ComputeInstance.grant_id.in_(ids)).all()],
         "sessions": [s.to_dict() for s in ComputeSession.query.filter(ComputeSession.grant_id.in_(ids)).order_by(ComputeSession.created_at.desc()).limit(100).all()],
         "active_sessions": [s.to_dict() for s in ComputeSession.query.filter(ComputeSession.grant_id.in_(ids), ComputeSession.state.in_(ACTIVE_STATES)).all()],
         "worker_online": worker_online(),
         "summary": {"gpu_seconds": sum(g.gpu_seconds_used for g in grants), "cost_millis": sum(g.cost_used_millis for g in grants)}})
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @compute_bp.get("/compute/manage/providers")
@@ -196,23 +201,41 @@ def problem_quota(problem_id):
 
 
 def compute_quota_values(data):
+    mode = delivery_mode(data)
+    if mode == "manual_account":
+        return manual_policy_values(data)
+    if mode != "managed":
+        raise GatewayError("未知算力发放方式。")
     provider_id = text(data, "provider_id", maximum=36)
     config = {"provider_id": provider_id, "enabled": boolean(data, "enabled"),
         "max_gpu_seconds": integer(data, "max_gpu_seconds", None, 0),
         "max_cost_millis": None if data.get("max_cost_millis") is None else integer(data, "max_cost_millis", None)}
+    if "mode" in data:
+        config["mode"] = "managed"
     return config
 
 
 def apply_problem_compute(problem, config):
     problem_id = problem.id
-    provider_id = config["provider_id"]
     lock_competition(problem.track.competition_id)
     lock_problem(problem_id)
+    grants = ComputeGrant.query.filter_by(problem_id=problem_id).order_by(ComputeGrant.id).with_for_update().all()
+    if delivery_mode(config) == "manual_account":
+        ids = [grant.id for grant in grants]
+        if ComputeSession.query.filter(ComputeSession.grant_id.in_(ids), ComputeSession.state.in_(ACTIVE_STATES)).first():
+            raise GatewayError("请先关闭并结算本题所有托管实例，再切换为手动发放账号。", 409)
+        for grant in grants:
+            grant.enabled = False
+        policy = db.session.get(ComputePolicy, problem_id, populate_existing=True) or ComputePolicy(problem_id=problem_id)
+        policy.config = config
+        db.session.add(policy)
+        audit("compute.problem.quota", "problem", problem_id, config)
+        return
+    provider_id = config["provider_id"]
     db.session.execute(update(ComputeProvider).where(ComputeProvider.id == provider_id).values(enabled=ComputeProvider.enabled))
     provider = db.session.get(ComputeProvider, provider_id)
     if not provider:
         raise GatewayError("请选择有效的算力渠道。")
-    grants = ComputeGrant.query.filter_by(problem_id=problem_id).order_by(ComputeGrant.id).with_for_update().all()
     for grant in grants:
         if grant.gpu_seconds_used > config["max_gpu_seconds"] or (config["max_cost_millis"] is not None and grant.cost_used_millis > config["max_cost_millis"]):
             raise GatewayError("新额度低于部分队伍已用或预占的额度，未保存任何修改。", 409)

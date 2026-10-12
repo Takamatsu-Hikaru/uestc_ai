@@ -7,6 +7,7 @@ const competitionLabels: Record<string, string> = {
   evaluation_artifacts: "测评证据", checkpoint_entries: "进度记录", competition_reviewers: "评委分配",
   ai_grants: "AI 授权", ai_keys: "AI 密钥", ai_usage_records: "AI 用量记录",
   compute_grants: "算力授权", compute_instances: "算力实例", compute_sessions: "算力会话",
+  manual_compute_accounts: "手动发放的算力账号（保留）",
 };
 
 const userLabels: Record<string, string> = {

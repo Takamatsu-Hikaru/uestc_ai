@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
-import { trackName } from "@/app/lib/wujiePresentation";
-import { TrackVisual } from "@/app/components/ClubVisuals";
 import { AppShell } from "@/app/components/AppShell";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import type { Problem, Track } from "@/app/lib/domain";
@@ -17,7 +15,7 @@ export default function ProblemsPage() {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return (data ?? []).filter((item) => !needle || `${item.code} ${item.title} ${item.summary} ${item.track.name} ${trackName(item.track.slug, item.track.name)}`.toLowerCase().includes(needle));
+    return (data ?? []).filter((item) => !needle || `${item.code} ${item.title} ${item.summary} ${item.track.name}`.toLowerCase().includes(needle));
   }, [data, query]);
   return (
     <AppShell title="题库" eyebrow="PROBLEM LIBRARY">
@@ -25,8 +23,8 @@ export default function ProblemsPage() {
       {loading ? <PageLoading /> : error ? <PageError message={error} retry={reload} /> : !filtered.length ? <EmptyState title="没有匹配题目" description="试试更短的关键词。" /> : (
         <div className="problem-directory standalone">{filtered.map((problem) => (
           <Link key={problem.id} href={`/competitions/${problem.competition_slug}/tracks/${problem.track.slug}/problems/${problem.slug}`}>
-            <TrackVisual value={problem.track.slug} className="problem-list-image" /><span className="problem-code-block">{problem.code}</span>
-            <div><div className="problem-heading"><h3>{problem.title}</h3><StatusPill tone={problem.status === "published" ? "live" : "warm"}>{problem.status === "published" ? "正式" : "候选"}</StatusPill></div><p>{problem.summary}</p><span className="problem-facts"><i>{trackName(problem.track.slug, problem.track.name)}</i><i>难度 {problem.difficulty}/5</i></span></div>
+            <span className="problem-code-block">{problem.code}</span>
+            <div><div className="problem-heading"><h3>{problem.title}</h3><StatusPill tone={problem.status === "published" ? "live" : "warm"}>{problem.status === "published" ? "正式" : "候选"}</StatusPill></div><p>{problem.summary}</p><span className="problem-facts"><i>{problem.track.name}</i><i>难度 {problem.difficulty}/5</i></span></div>
             <ArrowRight size={18} />
           </Link>
         ))}</div>

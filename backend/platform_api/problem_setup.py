@@ -17,6 +17,7 @@ from .ai_gateway import GatewayError, decrypt_keys
 from .ai_models import AIChannel, AIProblemQuota
 from .ai_quotas import lock_competition, lock_problem
 from .compute import worker_online
+from .compute_accounts import delivery_mode
 from .compute_models import ComputePolicy, ComputeProvider
 from .evaluation import catalog, fixed_evaluation_rules, validate_evaluation_config
 from .extensions import db
@@ -212,10 +213,17 @@ def readiness(problem):
     else:
         add("api", "模型 API", "unused", "未分配本题模型 API。")
     if compute:
-        provider = db.session.get(ComputeProvider, compute["provider_id"])
-        ok = provider and provider.enabled and provider.secret and worker_online()
-        add("compute", "AutoDL 与 SSH", "unused" if not compute["enabled"] else "ready" if ok else "blocked",
-            "队伍自用算力已暂停" if not compute["enabled"] else "渠道已配置，开机后本队可获取 SSH 和实例工具。" if ok else "请检查算力渠道启用、Token 与算力服务在线状态。")
+        if delivery_mode(compute) == "manual_account":
+            encrypted = bool(current_app.config.get("AI_GATEWAY_ENCRYPTION_KEY"))
+            add("compute", "AutoDL 手动账号", "unused" if not compute["enabled"] else "ready" if encrypted else "blocked",
+                "队伍账号发放已暂停。" if not compute["enabled"] else
+                "管理员按队伍发放账号，队伍登录 AutoDL 自行使用；不需要平台实例运行端。" if encrypted else
+                "请先配置凭据加密密钥 AI_GATEWAY_ENCRYPTION_KEY，再发放账号。")
+        else:
+            provider = db.session.get(ComputeProvider, compute["provider_id"])
+            ok = provider and provider.enabled and provider.secret and worker_online()
+            add("compute", "AutoDL 与 SSH", "unused" if not compute["enabled"] else "ready" if ok else "blocked",
+                "队伍自用算力已暂停" if not compute["enabled"] else "渠道已配置，开机后本队可获取 SSH 和实例工具。" if ok else "请检查算力渠道启用、Token 与算力服务在线状态。")
     else:
         add("compute", "AutoDL 与 SSH", "unused", "未分配队伍自用算力。")
     if (problem.track.competition.config or {}).get("launch", {}).get("require_ready"):
@@ -341,7 +349,7 @@ def bind_connections(setup, connections, overrides):
             if {item.name for item in matches} != set(names):
                 raise ValueError("本平台没有包内的模型渠道，请重新选择模型渠道。")
             setup["ai"]["allowed_channels"] = [item.id for item in matches]
-    if "compute" in setup:
+    if "compute" in setup and delivery_mode(setup["compute"]) != "manual_account":
         if not isinstance(setup["compute"], dict):
             raise ValueError("算力配置须为对象。")
         if "provider_id" in overrides:
@@ -367,7 +375,7 @@ def export_package(problem):
         connections["channels"] = [c.name for c in AIChannel.query.filter(AIChannel.id.in_(ids)).all()] if ids else []
     if data["compute"] is None:
         data.pop("compute")
-    else:
+    elif delivery_mode(data["compute"]) != "manual_account":
         provider = db.session.get(ComputeProvider, data["compute"].pop("provider_id"))
         connections["provider"] = provider.name
     from .routes.manage import PROBLEM_FIELDS

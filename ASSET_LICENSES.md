@@ -20,15 +20,3 @@
 
 
 历史参考：third_party/openai-codex/ 中的快照、LICENSE 与 NOTICE 仅作为先前方案的参考归档，不被当前虚拟 Agent 的界面或命令使用。
-
-## 社团预览配图（2026-10）
-
-- `public/visuals/ai-club-logo.png`：用户提供的 AI 社标识。
-- `public/visuals/ai-club-overview.svg`：本次为 AI 社绘制的总览图。
-- `public/visuals/wujie-poster.*`、`competition-qq.png`：用户提供的无界杯海报及比赛群二维码；海报二维码按原图替换。
-- `public/visuals/cuhkx.gif`：来自 [CUHK-X](https://github.com/openaiotlab/CUHK-X) 的数据示例。
-- `public/visuals/minedojo.*`：来自 [MineDojo](https://minedojo.org/) 的项目场景。
-- `public/visuals/libero-overview.png`、`libero-tasks.webp`：来自 [LIBERO](https://libero-project.github.io/main.html) 的项目图及其中的任务场景裁剪。
-- `public/visuals/minecraft-scenes.jpg`：用户提供的 MineDojo 论文插图中的场景。
-
-以上第三方图像与标识保持各自的权利归属，不包含在软件代码的 MIT 许可中。

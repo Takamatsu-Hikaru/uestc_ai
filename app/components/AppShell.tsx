@@ -94,7 +94,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
       <aside className={`app-sidebar ${menuOpen ? "is-open" : ""}`}>
         <div className="sidebar-head">
           <Link className="brand-lockup" href="/" onClick={() => setMenuOpen(false)}>
-            <span className="brand-mark"><Image src="/visuals/ai-club-logo.png" alt="UESTC AI 社" width={38} height={38} priority /></span>
+            <span className="brand-mark"><Image src="/uestc-logo.svg" alt="电子科技大学校徽" width={38} height={38} priority /></span>
             <span><strong>UESTC AI 社</strong><small>COMPETE / PUBLISH / BUILD</small></span>
           </Link>
           <button className="icon-button sidebar-close" aria-label="关闭导航" onClick={() => setMenuOpen(false)}><X size={19} /></button>
@@ -149,7 +149,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
           <footer className="app-footer app-footer-rich">
             <div className="footer-main">
               <div className="footer-brand">
-                <span className="footer-brand-mark"><Image src="/visuals/ai-club-logo.png" alt="" width={64} height={64} />UESTC / AI</span>
+                <span className="footer-brand-mark">UESTC / AI</span>
                 <strong>让灵感被看见。</strong>
                 <p>面向电子科技大学 AI 创作者的信息发布、赛事与作品社区。</p>
                 <span className="footer-location">CHENGDU · 2026</span>

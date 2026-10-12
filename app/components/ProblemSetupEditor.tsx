@@ -12,15 +12,17 @@ import { FieldError, PageError, PageLoading } from "./ui";
 import { useToast } from "./ToastProvider";
 import "./problem-setup.css";
 import { JudgePoolEditor, type JudgePoolStatus } from "./JudgePoolEditor";
+import type { ComputeConfig } from "@/app/lib/compute";
+import { ComputeConfigFields, defaultComputeConfig } from "./ComputeConfigFields";
+import { ManualComputeAccountEditor } from "./ManualComputeAccountEditor";
 
 type Scene = { id: string; label: string; difficulty: string; task_id: string; world_seed: number | string; max_steps: number; goals: string[] };
 type RobotScene = { id: string; label: string; difficulty: string; task: "lift" | "place" | "stack"; seed: number; max_steps: number; hold_steps: number; target?: number[] };
 type LiberoScene = { id: string; label: string; difficulty: string; suite: string; task_id: number; task_name: string; init_state_id: number; seed: number; max_steps: number };
 type Runtime = { image: string; agent_image: string; scenarios: unknown[]; execution?: "docker" | "autodl-native" };
-type Compute = { provider_id: string; enabled: boolean; max_gpu_seconds: number; max_cost_millis: number | null };
 type Provider = { id: string; name: string; enabled: boolean; gpu_label: string; gpu_count: number; hourly_price_millis: number };
 type RuntimeOption = { problem_id: string; name: string; adapter: string; image: string; agent_image: string; execution?: "docker" | "autodl-native" };
-type Config = { evaluation_config: EvaluationConfig; runtime: Runtime | null; ai: AIQuotaConfig | null; compute: Compute | null };
+type Config = { evaluation_config: EvaluationConfig; runtime: Runtime | null; ai: AIQuotaConfig | null; compute: ComputeConfig | null };
 type Check = { key: string; label: string; state: "ready" | "blocked" | "warning" | "unused"; detail: string };
 type Setup = { config: Config; checks: Check[]; ready: boolean; judge?: JudgePoolStatus | null };
 const defaultAI: AIQuotaConfig = { enabled: true, allowed_models: [], allowed_channels: [], max_calls: 1000, max_tokens: 1000000, max_cost_micros: null, max_output_tokens: 4096, requests_per_minute: 60, max_concurrent: 2 };
@@ -51,7 +53,6 @@ function SetupForm({ problemId, initial, refresh, saved }: { problemId: string; 
   const models = [...new Set([...allowedChannels.flatMap(c => Object.keys(c.models).filter(m => !c.disabled_models.includes(m))), ...(config.ai?.allowed_models ?? [])])].sort();
   function setRuntime(change: Partial<Runtime>) { setConfig(c => ({ ...c, runtime: { image: "", agent_image: "", scenarios: [], ...c.runtime, ...change } })); }
   function setAI(change: Partial<AIQuotaConfig>) { setConfig(c => ({ ...c, ai: { ...defaultAI, ...c.ai, ...change } })); }
-  function setCompute(change: Partial<Compute>) { setConfig(c => ({ ...c, compute: { provider_id: "", enabled: true, max_gpu_seconds: 36000, max_cost_millis: null, ...c.compute, ...change } })); }
   function setScene(index: number, change: Partial<Scene>) {
     setRuntime({ scenarios: config.runtime!.scenarios.map((s, i) => i === index ? { ...s as Scene, ...change } : s) });
   }
@@ -129,14 +130,16 @@ function SetupForm({ problemId, initial, refresh, saved }: { problemId: string; 
           <div className="form-grid">{([ ["max_tokens", "每队 Token 总额", 0], ["max_calls", "每队总调用次数", 0], ["max_output_tokens", "单次最大输出 Token", 1], ["requests_per_minute", "每分钟调用上限", 1], ["max_concurrent", "同时调用上限", 1] ] as const).map(([key, label, min]) => <label className="form-field" key={key}><span>{label}</span><input type="number" min={min} step={1} required value={config.ai![key]} onChange={e => setAI({ [key]: Number(e.target.value) })} /></label>)}<label className="form-field"><span>每队费用额度 · 点（可选）</span><input type="number" min={0} step="any" value={config.ai.max_cost_micros == null ? "" : config.ai.max_cost_micros / 1e6} onChange={e => setAI({ max_cost_micros: e.target.value === "" ? null : Math.round(Number(e.target.value) * 1e6) })} placeholder="留空不限制" /></label></div>
         </>}
       </fieldset>
-      <fieldset className="evaluation-editor"><legend>队伍自用算力 · AutoDL 与 SSH</legend><label className="evaluation-toggle"><input type="checkbox" checked={config.compute?.enabled ?? false} onChange={e => e.target.checked || initial.config.compute ? setCompute({ enabled: e.target.checked }) : setConfig(c => ({ ...c, compute: null }))} />提供独立 AutoDL 实例</label>
-        {config.compute && <><label className="form-field"><span>算力渠道与类型</span><select required value={config.compute.provider_id} onChange={e => setCompute({ provider_id: e.target.value })}><option value="">选择算力渠道…</option>{providers.data?.map(p => <option key={p.id} value={p.id}>{p.name} · {p.gpu_label} × {p.gpu_count}{p.enabled ? "" : " · 已停用"}</option>)}</select></label><div className="form-grid"><label className="form-field"><span>每队 GPU 卡时</span><input type="number" min={0} step="any" required value={config.compute.max_gpu_seconds / 3600} onChange={e => setCompute({ max_gpu_seconds: Math.round(Number(e.target.value) * 3600) })} /></label><label className="form-field"><span>每队参考运行费用 · 元（可选）</span><input type="number" min={0} step="any" value={config.compute.max_cost_millis == null ? "" : config.compute.max_cost_millis / 1000} onChange={e => setCompute({ max_cost_millis: e.target.value === "" ? null : Math.round(Number(e.target.value) * 1000) })} placeholder="留空不限制" /></label></div><p className="evaluation-note">队伍在 API 平台开机并获取 SSH、JupyterLab 等工具。本页保存配置不会创建或启动收费实例。</p></>}
+      <fieldset className="evaluation-editor"><legend>队伍自用算力 · 发放方式</legend>
+        <label className="evaluation-toggle"><input type="checkbox" checked={config.compute?.enabled ?? false} onChange={e => setConfig(c => ({ ...c, compute: !e.target.checked && !initial.config.compute ? null : { ...(c.compute ?? defaultComputeConfig()), enabled: e.target.checked } }))} />启用本题队伍算力</label>
+        {config.compute && <ComputeConfigFields value={config.compute} providers={providers.data ?? []} onChange={compute => setConfig(c => ({ ...c, compute }))} />}
       </fieldset>
       {channels.error && <PageError message={channels.error} retry={channels.reload} />}{providers.error && <PageError message={providers.error} retry={providers.reload} />}{runtimes.error && <PageError message={runtimes.error} retry={runtimes.reload} />}
       <FieldError>{error}</FieldError>
       <div className="setup-actions"><button className="primary-button" disabled={busy || channels.loading || providers.loading || runtimes.loading || Boolean(channels.error || providers.error || runtimes.error || sceneError)}><Save size={14} />{busy ? "正在保存…" : "保存全部环境与资源"}</button><a className="outline-button" href={`${API_BASE}/manage/problems/${problemId}/package`}><Download size={14} />导出赛题包</a><Link className="text-button" href="/api-platform">管理平台渠道</Link></div>
       <p className="evaluation-note">赛题包包含题面、提交要求、评测规则、固定镜像与私有场景；不包含渠道密钥、SSH 密码或队伍用量。导出的私有场景请仅供组织方使用。</p>
     </form>
+    {initial.config.compute?.mode === "manual_account" && <ManualComputeAccountEditor problemId={problemId} />}
   </div>;
 }
 
@@ -165,7 +168,7 @@ export function ProblemPackageImport({ trackId, onCreated }: { trackId: string; 
   }
   return <section className="evaluation-editor setup-import"><h2>从完整赛题包导入</h2><p>将题面、Docker 环境、私有场景、API 与算力额度一次带入。先检查预览，再创建草稿。</p><label className="form-field"><span>选择赛题 ZIP 包</span><input type="file" accept=".zip,application/zip" disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); setPreview(null); setError(""); }} /></label>
     <details><summary>重新绑定平台渠道（跨平台导入时使用）</summary><div className="form-grid"><label className="form-field"><span>模型渠道</span><select value={channelId} disabled={busy} onChange={e => { setChannelId(e.target.value); setPreview(null); }}><option value="">按包内名称匹配</option>{channels.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label className="form-field"><span>算力渠道</span><select value={providerId} disabled={busy} onChange={e => { setProviderId(e.target.value); setPreview(null); }}><option value="">按包内名称匹配</option>{providers.data?.map(p => <option key={p.id} value={p.id}>{p.name} · {p.gpu_label}</option>)}</select></label></div></details>
-    {preview && <div className="ai-notice"><strong>{preview.problem.code} · {preview.problem.title}</strong><p>{preview.problem.summary}</p><p>{preview.scene_count} 个私有场景 · {preview.setup.evaluation_config.adapter ? "自动指标测试" : "材料评审"} · {preview.setup.ai ? "含 API 额度" : "未分配 API"} · {preview.setup.compute ? "含 AutoDL 额度" : "未分配 AutoDL"}</p><p>{preview.message}</p></div>}
+    {preview && <div className="ai-notice"><strong>{preview.problem.code} · {preview.problem.title}</strong><p>{preview.problem.summary}</p><p>{preview.scene_count} 个私有场景 · {preview.setup.evaluation_config.adapter ? "自动指标测试" : "材料评审"} · {preview.setup.ai ? "含 API 额度" : "未分配 API"} · {preview.setup.compute?.mode === "manual_account" ? "手动发放 AutoDL 账号" : preview.setup.compute ? "含 AutoDL 额度" : "未分配 AutoDL"}</p><p>{preview.message}</p></div>}
     <FieldError>{error}</FieldError><div className="setup-actions"><button type="button" className="outline-button" disabled={!file || busy} onClick={() => void run(false)}>{busy ? "正在处理…" : "检查并预览"}</button>{preview && <button type="button" className="primary-button" disabled={busy} onClick={() => void run(true)}>导入为赛题草稿</button>}</div>
   </section>;
 }

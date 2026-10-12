@@ -11,6 +11,7 @@ import { activeCompute, computeCost, computeState, gpuHours } from "@/app/lib/co
 import type { ComputeGrant, ComputeOverview, ComputeProvider } from "@/app/lib/compute";
 import { ComputeProviderForm } from "./ComputeProviderForm";
 import { ComputeInstanceTools } from "./ComputeInstanceTools";
+import { ManualComputeAccountCard } from "./ManualComputeAccountCard";
 
 const computeErrors: Record<string, string> = {
   price_above_ceiling: "实际价格超过渠道预算单价，已请求关机。",
@@ -51,9 +52,10 @@ export function ComputeResources({ reviewer, allowSSH }: { reviewer: boolean; al
   if (resource.error && !resource.data) return <PageError message={resource.error} retry={resource.reload} />;
   const data = resource.data;
   if (!data) return null;
-  return <section className="ai-platform"><div className="ai-section-title"><div><h2>算力实例</h2><p>每队每题独立实例，关机后保留文件，再次开机继续使用。</p></div><button className="outline-button" onClick={resource.reload}><RefreshCw size={14} />刷新状态</button></div>
-    {!data.worker_online && <div className="ai-notice">算力运行端离线，暂时不能开机。已有实例的关机请求会保留，运行端恢复后继续处理。</div>}
-    <div className="ai-notice">请先选择本次使用时长；平台预占预算，到时自动关机。用量含预占，关机确认后结算。关机保留的磁盘可能继续产生 AutoDL 存储费用。</div>
+  return <section className="ai-platform"><div className="ai-section-title"><div><h2>队伍算力资源</h2><p>按题目查看托管实例或组织方发放的 AutoDL 账号。</p></div><button className="outline-button" onClick={resource.reload}><RefreshCw size={14} />刷新状态</button></div>
+    {data.manual_accounts?.length > 0 && <div className="ai-card-grid">{data.manual_accounts.map(account => <ManualComputeAccountCard key={`${account.team_id}:${account.problem_id}:${account.updated_at}:${account.enabled}`} account={account} allowCredentials={!reviewer && allowSSH} />)}</div>}
+    {!data.worker_online && data.grants.length > 0 && <div className="ai-notice">算力运行端离线，暂时不能开机。已有实例的关机请求会保留，运行端恢复后继续处理。</div>}
+    {data.grants.length > 0 && <div className="ai-notice">请先选择本次使用时长；平台预占预算，到时自动关机。用量含预占，关机确认后结算。关机保留的磁盘可能继续产生 AutoDL 存储费用。</div>}
     <FieldError>{error || resource.error}</FieldError>
     {data.grants.length ? <div className="ai-card-grid">{data.grants.map(grant => {
       const instance = data.instances.find(i => i.grant_id === grant.id);
@@ -68,7 +70,7 @@ export function ComputeResources({ reviewer, allowSSH }: { reviewer: boolean; al
           {instance && ssh?.instance === instance.id && <div className="compute-ssh"><strong>SSH 连接信息</strong><code>{ssh.command}</code><label className="form-field"><span>root 密码</span><input type="password" readOnly value={ssh.password} autoComplete="off" /></label><div className="ai-button-row"><button className="outline-button" onClick={async () => { try { await copyText(ssh.password); toast.success("SSH 密码已复制"); } catch { toast.error("复制失败，请稍后再试"); } }}>复制密码</button><button className="outline-button" onClick={() => setSSH(null)}>隐藏连接信息</button></div><small>连接信息一分钟后自动隐藏。</small></div>}
           {instance && !reviewer && allowSSH && <ComputeInstanceTools instanceId={instance.id} enabled={session?.state === "running" && !session.stop_requested && grant.enabled} />}
         </div></div>;
-    })}</div> : <EmptyState title="还没有分配算力额度" description="组织方在题目资源额度中设置预算后，各队可在这里使用 AutoDL 算力。" />}
+    })}</div> : !data.manual_accounts?.length && <EmptyState title="还没有分配算力资源" description="组织方可在题目资源设置中提供托管实例或手动发放 AutoDL 账号。" />}
     <div className="ai-section-title"><h2>算力使用记录</h2><span>最近 100 次</span></div>
     <div className="ai-table-wrap"><table className="ai-table"><thead><tr>{["队伍 / 题目", "状态", "计划时长", "GPU 卡时", "参考运行费用", "开机时间"].map(label => <th key={label}>{label}</th>)}</tr></thead><tbody>{data.sessions.map(s => <tr key={s.id}><td>{s.team_name}<small>{s.problem_title}</small></td><td>{computeState(s.state)}</td><td>{Math.round(s.duration_seconds / 60)} 分钟</td><td>{gpuHours(s.charged_gpu_seconds ?? s.reserved_gpu_seconds)}{s.charged_gpu_seconds === null && <small>预占</small>}</td><td>¥{computeCost(s.charged_cost_millis ?? s.reserved_cost_millis)}</td><td>{new Date(s.dispatched_at ?? s.created_at).toLocaleString("zh-CN")}</td></tr>)}{!data.sessions.length && <tr><td colSpan={6}>暂无算力使用记录。</td></tr>}</tbody></table></div>
   </section>;

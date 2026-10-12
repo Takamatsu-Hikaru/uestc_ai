@@ -3,9 +3,6 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Cpu, Gauge } from "lucide-react";
-import { TrackVisual, trackSummary } from "@/app/components/ClubVisuals";
-import { trackName, trackDirection, WUJIE_SLUG } from "@/app/lib/wujiePresentation";
-import { WujieTaskDocuments } from "@/app/components/WujieIntroduction";
 import { AppShell } from "@/app/components/AppShell";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import type { Track } from "@/app/lib/domain";
@@ -16,12 +13,12 @@ export default function TrackPage() {
   const { competitionSlug, trackSlug } = params;
   const { data, loading, error, reload } = useApiResource<Track>(competitionSlug && trackSlug ? `/competitions/${competitionSlug}/tracks/${trackSlug}` : null);
   return (
-    <AppShell variant="detail" title={data ? trackName(data.slug, data.name) : "赛道"} eyebrow="TRACK" actions={<Link className="outline-button" href={`/competitions/${competitionSlug}`}><ArrowLeft size={15} />返回赛事</Link>}>
+    <AppShell variant="detail" title={data?.name ?? "赛道"} eyebrow="TRACK" actions={<Link className="outline-button" href={`/competitions/${competitionSlug}`}><ArrowLeft size={15} />返回赛事</Link>}>
       {loading ? <PageLoading /> : error || !data ? <PageError message={error || "赛道不存在。"} retry={reload} /> : (
         <>
-          <TrackVisual value={data.slug} className="track-detail-hero" source /><section className="track-overview"><div><span className="mono-label">{trackDirection(data.slug, data.config?.short ?? data.slug.toUpperCase())}</span><p>{trackSummary(data.slug, data.description)}</p>{competitionSlug === WUJIE_SLUG && <WujieTaskDocuments trackSlug={data.slug} />}</div><dl><div><dt>题目数量</dt><dd>{data.problems?.length ?? 0}</dd></div><div><dt>参赛方式</dt><dd>{competitionSlug === WUJIE_SLUG ? "1—3 人 / 队" : "个人 / 组队"}</dd></div></dl></section>
+          <section className="track-overview"><div><span className="mono-label">{data.config?.short ?? data.slug.toUpperCase()}</span><p>{data.description}</p></div><dl><div><dt>题目数量</dt><dd>{data.problems?.length ?? 0}</dd></div><div><dt>参赛方式</dt><dd>个人 / 组队</dd></div></dl></section>
           <section className="content-section">
-            <header className="section-header"><div><span className="eyebrow"><i />PROBLEMS</span><h2>赛道题目</h2></div></header>
+            <header className="section-header"><div><span className="eyebrow"><i />PROBLEMS</span><h2>赛道题目</h2></div><span className="section-note">点入题目后查看规则、资源与提交要求</span></header>
             {!data.problems?.length ? <EmptyState title="暂无公开题目" description="赛题发布后会显示在这里。" /> : <div className="problem-directory">
               {data.problems.map((problem) => (
                 <Link key={problem.id} href={`/competitions/${competitionSlug}/tracks/${trackSlug}/problems/${problem.slug}`}>
