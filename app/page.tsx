@@ -6,7 +6,7 @@ import { ArrowRight, BookOpen, CalendarDays, Code2 } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { RevealSection } from "@/app/components/RevealSection";
 import { ScrollFilmIntro } from "@/app/components/ScrollFilmIntro";
-import { TrackVisual } from "@/app/components/ClubVisuals";
+import { ArticleVisual, TrackVisual } from "@/app/components/ClubVisuals";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import { api, formatApiError } from "@/app/lib/api";
 import type { Competition, ContentItem, Track } from "@/app/lib/domain";
@@ -129,7 +129,7 @@ export default function Home() {
         {loading ? <PageLoading label="正在读取动态" /> : articles.length ? <div className="news-cards news-showcase" ref={updatesShowcaseRef}>
           <div className="updates-featured-rail">
             <Link data-reveal-item className="update-card update-featured" data-kind={articles[0].kind} href={`/news/${articles[0].slug}`}>
-              <div className="update-visual update-featured-visual" aria-hidden="true"><span>UESTC AI</span><i /></div>
+              <div className="update-visual update-featured-visual"><ArticleVisual title={articles[0].title} slug={articles[0].slug} /></div>
               <div className="update-featured-info">
                 <div className="update-card-top"><time>{articles[0].published_at ? shortDate(articles[0].published_at) : "草稿"}</time><span>{articles[0].kind}</span></div>
                 <strong>{articles[0].title}</strong>
@@ -141,7 +141,7 @@ export default function Home() {
           {articles.length > 1 && <div className="updates-sidebar">
             {articles.slice(1).map((article, index) => (
               <Link data-reveal-item className="update-card update-small" data-kind={article.kind} href={`/news/${article.slug}`} key={article.id}>
-                <div className="update-visual update-small-visual" aria-hidden="true"><span>{String(index + 2).padStart(2, "0")}</span><i /></div>
+                <div className="update-visual update-small-visual"><ArticleVisual title={article.title} slug={article.slug} /></div>
                 <div className="update-small-info">
                   <div className="update-card-top"><time>{article.published_at ? shortDate(article.published_at) : "草稿"}</time><span>{article.kind}</span></div>
                   <strong>{article.title}</strong>
