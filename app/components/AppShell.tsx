@@ -93,7 +93,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
       <aside className={`app-sidebar ${menuOpen ? "is-open" : ""}`}>
         <div className="sidebar-head">
           <Link className="brand-lockup" href="/" onClick={() => setMenuOpen(false)}>
-            <span className="brand-mark"><Image src="/uestc-logo.svg" alt="电子科技大学校徽" width={38} height={38} priority /></span>
+            <span className="brand-mark"><Image src="/visuals/ai-club-logo.png" alt="UESTC AI 社" width={38} height={38} priority /></span>
             <span><strong>UESTC AI 社</strong><small>COMPETE / PUBLISH / BUILD</small></span>
           </Link>
           <button className="icon-button sidebar-close" aria-label="关闭导航" onClick={() => setMenuOpen(false)}><X size={19} /></button>
@@ -104,7 +104,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return <Link key={href} href={href} className={active ? "active" : ""} onClick={() => setMenuOpen(false)}><Icon size={17} strokeWidth={1.7} /><span>{label}</span></Link>;
           })}
-        </nav>
+        <a href="https://wiki.uestcai.top/" target="_blank" rel="noreferrer"><BookOpen size={17} strokeWidth={1.7} /><span>入门指南</span></a></nav>
         {workspaceNavigation.length > 0 && <><span className="nav-label workspace-nav-label">WORKSPACE</span><nav className="app-nav" aria-label="工作区导航">{workspaceNavigation.map(({ href, label, icon: Icon }) => {
           const active = href === "/manage/competitions"
             ? pathname.startsWith("/manage/competitions") || pathname.startsWith("/manage/problems")
@@ -147,7 +147,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
           <footer className="app-footer app-footer-rich">
             <div className="footer-main">
               <div className="footer-brand">
-                <span className="footer-brand-mark">UESTC / AI</span>
+                <span className="footer-brand-mark"><Image src="/visuals/ai-club-logo.png" alt="" width={64} height={64} />UESTC / AI</span>
                 <strong>让灵感被看见。</strong>
                 <p>面向电子科技大学 AI 创作者的信息发布、赛事与作品社区。</p>
                 <span className="footer-location">CHENGDU · 2026</span>
@@ -163,6 +163,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
                 <strong>社区</strong>
                 <Link href="/news">最新动态</Link>
                 <Link href="/about">关于我们</Link>
+                <a href="https://wiki.uestcai.top/" target="_blank" rel="noreferrer">入门指南</a>
                 <Link href="/dashboard">个人工作台</Link>
                 <Link href="/login">登录账户</Link>
               </nav>

@@ -1,0 +1,210 @@
+/* Public editorial layer: original opening animation and account UI are preserved. */
+.public-shell { --surface:#fff; }
+.public-shell .brand-mark { width:48px; height:48px; background:transparent; border:0; }
+.public-shell .brand-mark img { width:46px; height:46px; object-fit:contain; }
+.public-shell .footer-brand-mark { display:flex; align-items:center; gap:16px; }
+.public-shell .footer-brand-mark img { object-fit:contain; }
+.public-shell .page-title-band h1 { font-weight:750; letter-spacing:-.025em; }
+.public-shell .section-header h2 { font-weight:730; }
+.public-shell .page-intro p,.public-shell .community-intro p { color:#58665b; line-height:1.85; max-width:800px; }
+.public-shell strong,.public-shell b { color:var(--ink); font-weight:750; }
+.public-shell .markdown-body { background:#fff; color:#39453d; line-height:1.95; padding:clamp(22px,3.5vw,50px); border:1px solid #e5e9e2; border-radius:10px; }
+.public-shell .markdown-body p { margin:0 0 1.3em; }
+.public-shell .markdown-body h2 { color:#263d2e; font-weight:750; margin:2.1em 0 .85em; padding-bottom:12px; border-bottom:1px solid #e1e8df; }
+.public-shell .markdown-body h3 { color:#354b3b; font-weight:700; margin:1.65em 0 .7em; }
+.public-shell .markdown-body strong { color:#25392c; font-weight:750; }
+.public-shell .markdown-body a { color:#3c6f52; text-decoration-color:#b9d1c0; text-underline-offset:4px; }
+.public-shell .markdown-body img { border-radius:6px; max-height:none; object-fit:contain; }
+.public-shell .markdown-body blockquote { border-left:3px solid #8cab92; background:#f6f8f4; border-radius:0 6px 6px 0; }
+.public-shell .markdown-body :is(th,td) { line-height:1.7; padding:12px 14px; }
+.public-shell .markdown-body th { color:#294834; background:#f0f5ed; font-weight:700; }
+.public-shell .article-body { max-width:900px; }
+.public-shell .problem-summary p,.public-shell .competition-overview p,.public-shell .track-overview p { font-size:18px; line-height:1.85; color:#394b40; }
+.public-shell .page-title-band { background:linear-gradient(115deg,#f5f7f0,#fafbf8); }
+.public-shell .community-toolbar { background:white; padding:14px 18px; border:1px solid #e4e9e0; border-radius:8px; }
+.public-shell .community-card { background:white; border-radius:9px; overflow:hidden; border-color:#e1e7df; box-shadow:none; }
+.public-shell .community-card h2 { font-weight:750; }
+.public-shell .community-card-main { padding:0 0 20px; }
+.public-shell .community-card-main > :not(.article-cover):not(.club-track-visual) { margin-left:24px; margin-right:24px; }
+.public-shell .community-card-top { margin-top:22px; }
+.article-cover { height:220px; overflow:hidden; background:#edf2e6; display:grid; place-items:center; }
+.article-cover img { width:100%; height:100%; object-fit:cover; }
+.article-cover.cover-icon { color:#72917a; background:linear-gradient(135deg,#f1f5eb,#e8eee0); }
+.public-shell .update-visual { overflow:hidden; }
+.public-shell .update-visual:before,.public-shell .update-visual:after { display:none; }
+.public-shell .update-visual .article-cover,.public-shell .update-visual .club-track-visual { width:100%; height:100%; min-height:280px; }
+.public-shell .update-featured-visual .article-cover img { object-fit:contain; padding:22px; background:linear-gradient(115deg,#e5ecd8,#f2f1e5); }
+.public-shell .update-featured-info strong { font-weight:750; }
+.public-shell .update-featured-info { background:#fff; }
+.public-shell .update-featured { border:1px solid #e1e7df; border-radius:10px; overflow:hidden; }
+.public-shell .home-manifesto .manifesto-card > span { display:flex; align-items:center; gap:12px; color:#496650; }
+.public-shell .home-manifesto .manifesto-card > span svg { position:static; }
+.public-shell .home-manifesto .manifesto-card strong { font-weight:750; }
+.public-shell .home-manifesto .manifesto-intro h2 { font-weight:750; }
+.club-track-visual { position:relative; margin:0; overflow:hidden; background:var(--paper-2); }
+.club-track-visual > img { width:100%; height:100%; display:block; object-fit:cover; }
+.visual-deep-learning { background:#101718; }
+.visual-deep-learning > img { object-fit:contain; }
+.visual-embodied-agent > img { object-position:center 43%; }
+.visual-project-label { position:absolute; display:flex; align-items:center; gap:8px; left:16px; bottom:14px; background:#fffef4f2; color:#263d2e; padding:6px 11px; border-radius:4px; font-size:13px; font-weight:700; }
+.club-track-visual figcaption { position:absolute; right:12px; bottom:14px; font-size:12px; background:#ffffffed; border-radius:4px; padding:6px 9px; }
+.club-track-visual figcaption a { color:#334b40; }
+.public-shell:has(.home-updates) .flagship-section .track-card:is(.track-coral,.track-ink,.track-sage,.track-sand) { background:#fff; border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:0 0 22px; overflow:hidden; gap:18px; }
+.public-shell .track-card > .club-track-visual { height:208px; min-height:208px; width:100%; }
+.public-shell .track-card > div,.public-shell .track-card > footer { margin-left:24px; margin-right:24px; }
+.public-shell:has(.home-updates) .flagship-section .track-card h3 { color:var(--ink); font-weight:750; font-size:25px; }
+.public-shell:has(.home-updates) .flagship-section .track-card p { color:var(--muted); line-height:1.75; }
+.public-shell .track-card small,.public-shell .track-card .track-card-top { color:var(--muted); }
+.public-shell .track-card footer { border-color:var(--line); color:var(--coral); }
+.home-competition-feature { display:grid; grid-template-columns:minmax(230px,330px) minmax(0,1fr); gap:clamp(28px,5vw,70px); padding:32px; margin:0 0 32px; background:#fff; border:1px solid var(--line); border-radius:10px; align-items:center; }
+.competition-poster { display:block; background:#152030; line-height:0; border-radius:5px; overflow:hidden; box-shadow:0 10px 30px #12294315; }
+.competition-poster img { display:block; width:100%; height:auto; object-fit:contain; }
+.competition-feature-copy h3 { font-size:clamp(29px,3.1vw,43px); line-height:1.45; margin:14px 0 24px; letter-spacing:-.025em; color:var(--ink); }
+.competition-feature-copy p { color:var(--muted); line-height:1.9; font-size:17px; max-width:650px; }
+.competition-feature-copy .eyebrow { color:var(--muted); }
+.competition-topics { display:flex; flex-wrap:wrap; gap:10px; margin:28px 0 35px; }
+.competition-topics span { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--coral); background:var(--paper-2); padding:9px 12px; border-radius:5px; font-weight:650; }
+.public-shell .competition-row { position:relative; grid-template-columns:200px minmax(0,1fr) auto; background:#fff; border:1px solid #e0e7df; padding:24px; border-radius:10px; gap:28px; }
+.competition-list-poster { width:200px; height:auto; border-radius:4px; grid-column:1; grid-row:1 / 3; }
+.public-shell .competition-row:has(.competition-list-poster) .competition-index { display:none; }
+.public-shell .competition-row:has(.competition-list-poster) .competition-main { grid-column:2; grid-row:1; }
+.public-shell .competition-row:has(.competition-list-poster) .competition-meta { grid-column:2; grid-row:2; }
+.public-shell .competition-row h2 { font-weight:750; }
+.public-shell .competition-overview:has(.competition-poster) { display:grid; grid-template-columns:minmax(220px,330px) minmax(0,1fr); column-gap:50px; align-items:start; background:#fff; padding:32px; border:1px solid #e0e7df; border-radius:10px; }
+.competition-overview > .competition-poster { grid-column:1; grid-row:1 / 3; }
+.competition-overview:has(.competition-poster) > div,.competition-overview:has(.competition-poster) > dl { grid-column:2; }
+.public-shell .track-directory { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; }
+.public-shell .track-directory .track-entry { display:flex; flex-direction:column; align-items:stretch; background:white; padding:0 0 22px; gap:13px; border:1px solid var(--line); border-radius:8px; overflow:hidden; position:relative; }
+.track-directory .club-track-visual { height:190px; }
+.public-shell .track-directory .track-entry > :not(.club-track-visual) { margin-left:22px; margin-right:22px; }
+.public-shell .track-directory .track-number { display:none; }
+.public-shell .track-directory h3 { color:var(--ink); font-weight:750; }
+.public-shell .track-directory p { color:var(--muted); line-height:1.8; font-size:15px; }
+.public-shell .track-directory .track-entry > svg { align-self:flex-end; }
+.track-detail-hero { height:clamp(210px,32vw,390px); border-radius:9px; margin-bottom:25px; }
+.track-detail-hero.visual-deep-learning > img { object-fit:contain; }
+.track-detail-hero.visual-embodied-agent > img { object-fit:contain; background:var(--paper-2); }
+.problem-detail-hero { height:clamp(190px,26vw,320px); border-radius:8px; margin-bottom:25px; }
+.problem-detail-hero.visual-embodied-agent > img { object-fit:contain; background:var(--paper-2); }
+.public-shell .problem-directory.standalone > a { grid-template-columns:190px minmax(0,1fr) auto; gap:25px; background:#fff; border:1px solid #e0e6dd; border-radius:8px; margin-bottom:18px; overflow:hidden; padding:18px; }
+.problem-list-image { width:190px; height:130px; border-radius:5px; }
+.problem-directory.standalone .problem-code-block { display:none; }
+.public-shell .problem-heading h3 { font-weight:750; }
+.club-about-intro { display:flex; align-items:center; gap:36px; max-width:1000px; margin:0 auto 42px; }
+.club-about-intro > img { object-fit:contain; flex:none; }
+.club-about-intro h2 { font-size:30px; margin:0 0 15px; font-weight:750; }
+.club-about-intro p { font-size:17px; line-height:1.95; margin:0; color:#556259; }
+.club-overview-figure { margin:0 0 30px; background:#fff; border:1px solid #e0e7dd; border-radius:10px; padding:14px; }
+.club-overview-figure img { display:block; width:100%; height:auto; }
+.club-about-links { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+.club-about-links > a { display:flex; align-items:center; gap:12px; padding:20px 16px; background:white; border:1px solid #e0e7dd; border-radius:7px; color:#547a5f; font-size:15px; }
+.club-about-links > a > svg:last-child { margin-left:auto; width:17px; }
+.public-shell .deadline-block { background:#eaf0e5; border:1px solid #dbe4d4; }
+@media(max-width:1000px){
+ .public-shell .track-directory { gap:14px; }
+ .public-shell .track-directory h3 { font-size:22px; }
+ .home-competition-feature { grid-template-columns:250px minmax(0,1fr); gap:28px; padding:24px; }
+ .competition-feature-copy h3 { font-size:30px; }
+ .club-about-links { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .public-shell .competition-overview:has(.competition-poster) { column-gap:28px; }
+}
+@media(max-width:700px){
+ .public-shell .brand-mark,.public-shell .brand-mark img { width:38px; height:38px; }
+ .public-shell .page-title-band h1 { font-size:32px; line-height:1.45; }
+ .public-shell .markdown-body { padding:22px 18px; font-size:16px; line-height:1.85; }
+ .public-shell .markdown-body h2 { font-size:23px; }
+ .public-shell .home-manifesto .manifesto-card > span { gap:8px; font-size:10px; }
+ .public-shell .home-manifesto .manifesto-card > span svg { width:20px; height:20px; }
+ .home-competition-feature { grid-template-columns:1fr; padding:20px; gap:25px; }
+ .home-competition-feature > .competition-poster { width:min(100%,340px); justify-self:center; }
+ .competition-feature-copy h3 { font-size:28px; margin:12px 0 18px; }
+ .competition-feature-copy p { font-size:16px; }
+ .competition-topics { margin:20px 0; gap:8px; }
+ .competition-topics span { font-size:12px; padding:8px; }
+ .public-shell .track-card > .club-track-visual { height:180px; min-height:180px; }
+ .public-shell:has(.home-updates) .flagship-section .track-card:is(.track-coral,.track-ink,.track-sage,.track-sand) { padding:0 0 20px; }
+ .public-shell .competition-row { display:flex; flex-direction:column; align-items:stretch; gap:18px; padding:20px; }
+ .competition-list-poster { width:min(100%,300px); align-self:center; }
+ .public-shell .competition-overview:has(.competition-poster) { grid-template-columns:1fr; gap:25px; padding:20px; }
+ .competition-overview > .competition-poster { grid-column:1; grid-row:auto; width:min(100%,340px); justify-self:center; }
+ .competition-overview:has(.competition-poster) > div,.competition-overview:has(.competition-poster) > dl { grid-column:1; }
+ .public-shell .track-directory { grid-template-columns:1fr; }
+ .track-directory .club-track-visual { height:200px; }
+ .public-shell .problem-directory.standalone > a { grid-template-columns:1fr; gap:16px; }
+ .problem-list-image { width:100%; height:180px; }
+ .club-about-intro { display:block; margin-bottom:25px; }
+ .club-about-intro > img { width:90px; height:90px; margin-bottom:20px; }
+ .club-about-intro h2 { font-size:26px; }
+ .club-about-intro p { font-size:16px; }
+ .club-overview-figure { overflow:auto; padding:10px; }
+ .club-overview-figure img { min-width:780px; }
+ .club-about-links { grid-template-columns:1fr; }
+ .article-cover { height:190px; }
+ .public-shell .community-card-main > :not(.article-cover):not(.club-track-visual) { margin-left:20px; margin-right:20px; }
+}
+
+.public-shell:has(.home-updates) .flagship-section .track-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; }
+.public-shell:has(.home-updates) .flagship-section .track-card > .club-track-visual { margin:0; }
+.public-shell:has(.home-updates) .flagship-section .track-card:hover { background:var(--paper); }
+.public-shell:has(.home-updates) .flagship-section .track-card p { opacity:1; font-size:15px; }
+.public-shell:has(.home-updates) .flagship-section .track-card h3 { line-height:1.5; }
+.public-shell:has(.home-updates) .flagship-section .track-card::after { display:none; }
+.public-shell .home-manifesto .manifesto-card:first-child { background:var(--paper-2); }
+.public-shell .home-manifesto .manifesto-card:first-child > span { color:var(--coral); }
+@media(max-width:700px) { .public-shell:has(.home-updates) .flagship-section .track-grid { grid-template-columns:1fr; } }
+
+/* Override the earlier alternating card colors. */
+.public-shell:has(.home-updates) .flagship-section .track-card:is(.track-coral,.track-ink,.track-sage,.track-sand) { background:#fff !important; }
+.public-shell:has(.home-updates) .flagship-section .track-card .track-card-top { display:none; }
+.public-shell:has(.home-updates) .flagship-section .track-card > div { margin-top:0; padding-top:0; }
+.public-shell:has(.home-updates) .news-showcase .update-visual > .article-cover { position:absolute; inset:0; min-height:0; }
+.public-shell:has(.home-updates) .news-showcase .update-visual > .article-cover img { height:100%; min-height:0; }
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:360px; min-height:0; aspect-ratio:auto; }
+@media(max-width:700px){
+ .public-shell:has(.home-updates) .flagship-section .track-grid { display:grid; overflow:visible; }
+ .public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:240px; }
+}
+
+.article-cover { position:relative; }
+.public-shell .article-cover > img { position:absolute; inset:0; width:100%; height:100%; min-height:0; }
+.public-shell .cover-mascot > img { object-fit:contain; padding:16px; }
+
+.public-shell .home-competition-feature .competition-feature-copy h3 { font-weight:750; }
+
+/* Wujie introduction, prizes and original PDF. */
+.wujie-intro-actions { display:flex; gap:22px; align-items:center; flex-wrap:wrap; }
+.wujie-document-link { display:inline-flex; align-items:center; gap:9px; color:var(--coral); font-weight:650; font-size:15px; line-height:1.6; }
+.wujie-document-link small { font-size:11px; color:var(--muted); margin-left:7px; }
+.public-shell .wujie-audience { font-size:15px; line-height:1.85; color:var(--muted); }
+.public-shell .wujie-audience strong { color:var(--ink); }
+.wujie-task-documents { display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:16px; }
+.wujie-intro-actions .wujie-task-documents { flex-basis:100%; margin-top:0; }
+.wujie-prizes { align-self:start; padding:22px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink-2); }
+.public-shell .wujie-prizes h3 { color:var(--ink); font-size:20px; font-weight:650; margin:0 0 12px; }
+.public-shell .wujie-prizes p,.public-shell .wujie-prizes li { color:var(--ink-2); font-size:15px; line-height:1.85; }
+.public-shell .wujie-prizes p { margin:0 0 8px; }
+.wujie-prizes ul { margin:0; padding-left:20px; }
+.public-shell .competition-overview:has(.competition-poster) { row-gap:24px; }
+.public-shell .competition-overview:has(.competition-poster) > .wujie-prizes { grid-column:2; padding:0; border:0; background:transparent; }
+.public-shell .competition-overview:has(.competition-poster) .wujie-audience { font-size:15px; }
+.public-shell .competition-overview:has(.competition-poster) > div > p:first-of-type { font-size:18px; line-height:1.9; }
+.public-shell .competition-feature-copy .wujie-audience { font-size:15px; }
+.public-shell .page-intro:has(.wujie-task-documents) { display:block; }
+.public-shell .track-directory .track-entry { background:var(--surface); }
+@media(max-width:700px){
+ .public-shell .competition-overview:has(.competition-poster) > .wujie-prizes { grid-column:1; }
+ .wujie-intro-actions { gap:17px; }
+ .public-shell .track-card small { letter-spacing:0; }
+ .wujie-task-documents { flex-direction:column; gap:12px; }
+}
+
+/* Keep each task document alongside its image and introduction. */
+.track-with-document { display:flex; flex-direction:column; min-width:0; }
+.track-with-document > a { flex:1; }
+.public-shell .track-with-document > .wujie-task-documents { margin:0; padding:13px 22px; background:var(--surface); border:1px solid var(--line); border-top:0; border-radius:0 0 8px 8px; }
+.public-shell .track-with-document > .wujie-task-documents a { font-weight:500; }
+.public-shell .track-with-document .track-entry,
+.public-shell:has(.home-updates) .flagship-section .track-with-document .track-card { border-radius:8px 8px 0 0; }
+.public-shell .wujie-prizes { background:transparent; border:0; padding:0; margin:32px 0; }
+.public-shell .competition-overview:has(.competition-poster) > .competition-poster { grid-row:1; }
+.public-shell .competition-overview:has(.competition-poster) { align-items:center; }

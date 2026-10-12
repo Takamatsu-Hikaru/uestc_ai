@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BookOpen, CalendarDays, Code2 } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Code2, Trophy, Newspaper, ScanEye, Boxes, Bot } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { RevealSection } from "@/app/components/RevealSection";
+import { ArticleVisual, TrackVisual, trackSummary, CompetitionPoster } from "@/app/components/ClubVisuals";
+import { competitionSummary, trackName, trackDirection, WUJIE_SLUG } from "@/app/lib/wujiePresentation";
+import { WujieAudience, WujieTaskDocuments, WujiePrizes } from "@/app/components/WujieIntroduction";
 import { ScrollFilmIntro } from "@/app/components/ScrollFilmIntro";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import { api, formatApiError } from "@/app/lib/api";
@@ -128,7 +131,7 @@ export default function Home() {
         {loading ? <PageLoading label="正在读取动态" /> : articles.length ? <div className="news-cards news-showcase" ref={updatesShowcaseRef}>
           <div className="updates-featured-rail">
             <Link data-reveal-item className="update-card update-featured" data-kind={articles[0].kind} href={`/news/${articles[0].slug}`}>
-              <div className="update-visual update-featured-visual" aria-hidden="true"><span>UESTC AI</span><i /></div>
+              <div className="update-visual update-featured-visual"><ArticleVisual title={articles[0].title} slug={articles[0].slug} body={articles[0].body_md} /></div>
               <div className="update-featured-info">
                 <div className="update-card-top"><time>{articles[0].published_at ? shortDate(articles[0].published_at) : "草稿"}</time><span>{articles[0].kind}</span></div>
                 <strong>{articles[0].title}</strong>
@@ -138,9 +141,9 @@ export default function Home() {
             </Link>
           </div>
           {articles.length > 1 && <div className="updates-sidebar">
-            {articles.slice(1).map((article, index) => (
+            {articles.slice(1).map((article) => (
               <Link data-reveal-item className="update-card update-small" data-kind={article.kind} href={`/news/${article.slug}`} key={article.id}>
-                <div className="update-visual update-small-visual" aria-hidden="true"><span>{String(index + 2).padStart(2, "0")}</span><i /></div>
+                <div className="update-visual update-small-visual"><ArticleVisual title={article.title} slug={article.slug} body={article.body_md} /></div>
                 <div className="update-small-info">
                   <div className="update-card-top"><time>{article.published_at ? shortDate(article.published_at) : "草稿"}</time><span>{article.kind}</span></div>
                   <strong>{article.title}</strong>
@@ -154,11 +157,11 @@ export default function Home() {
       </RevealSection>
 
       <RevealSection className="home-manifesto" aria-label="产品矩阵">
-        <div className="manifesto-intro"><span>01 / PLATFORM</span><h2>从想法，到<br />被看见。</h2><p>选择一个入口，开始下一次探索。</p></div>
+        <div className="manifesto-intro"><span>UESTC AI</span><h2>比赛、项目<br />与交流。</h2><p>参加比赛，分享文章，也展示自己做的项目。</p></div>
         <div className="manifesto-cards" role="group" aria-label="产品入口">
-          <Link data-reveal-item className="manifesto-card" href="/competitions"><span>01 / COMPETE</span><strong>真实挑战</strong><p>进入赛题，在约束中验证想法。</p><ArrowRight size={19} /></Link>
-          <Link data-reveal-item className="manifesto-card" href="/news"><span>02 / PUBLISH</span><strong>公开方法</strong><p>记录过程，让知识持续流动。</p><ArrowRight size={19} /></Link>
-          <Link data-reveal-item className="manifesto-card" href="/works"><span>03 / BUILD</span><strong>共同创造</strong><p>找到同行者，把原型推进为作品。</p><ArrowRight size={19} /></Link>
+          <Link data-reveal-item className="manifesto-card" href="/competitions"><span><Trophy size={25} /> COMPETE</span><strong>无界杯</strong><p>人体动作识别、开放世界探索与机械臂操作。</p><ArrowRight size={19} /></Link>
+          <Link data-reveal-item className="manifesto-card" href="/news"><span><Newspaper size={25} /> JOURNAL</span><strong>文章与动态</strong><p>赛事公告、技术笔记与项目记录。</p><ArrowRight size={19} /></Link>
+          <Link data-reveal-item className="manifesto-card" href="/works"><span><Code2 size={25} /> PROJECTS</span><strong>项目与作品</strong><p>参赛作品、开源工具，以及比赛之外的尝试。</p><ArrowRight size={19} /></Link>
         </div>
       </RevealSection>
 
@@ -171,18 +174,20 @@ export default function Home() {
         ) : competition ? (
           <RevealSection className="home-section flagship-section">
             <header className="section-header">
-              <div><span className="eyebrow"><i />TRACKS</span><h2>赛事赛道</h2><span className="mobile-swipe-hint" aria-hidden="true">左右滑动查看赛道 <ArrowRight size={14} /></span></div>
+              <div><span className="eyebrow"><i />TRACKS</span><h2>赛事赛道</h2></div>
               <Link href={`/competitions/${competition.slug}`}>完整赛事说明 <ArrowRight size={15} /></Link>
             </header>
+            {competition.slug === "wujie-cup-2026" && <div className="home-competition-feature"><CompetitionPoster /><div className="competition-feature-copy"><span className="eyebrow">2026 · UESTC AI</span><h3>{competition.name}</h3><p>{competitionSummary(competition.slug, competition.summary)}</p><WujieAudience /><div className="competition-topics"><span><ScanEye size={20} />计算机视觉</span><span><Boxes size={20} />Agent</span><span><Bot size={20} />具身智能</span></div><div className="wujie-intro-actions"><Link className="primary-button" href={`/competitions/${competition.slug}`}>赛事详情 <ArrowRight size={17} /></Link></div></div></div>}
             <div className="track-grid">
               {(competition.tracks ?? []).map((track, index) => (
-                <Link data-reveal-item className={`track-card track-${trackAccent(track, index)}`} key={track.id} href={`/competitions/${competition.slug}/tracks/${track.slug}`}>
-                  <div className="track-card-top"><span>{String(index + 1).padStart(2, "0")}</span><Code2 size={18} strokeWidth={1.5} /></div>
-                  <div><small>{track.config?.short ?? "TRACK"}</small><h3>{track.name}</h3><p>{track.description}</p></div>
+                <article data-reveal-item className="track-with-document" key={track.id}><Link className={`track-card track-${trackAccent(track, index)}`} href={`/competitions/${competition.slug}/tracks/${track.slug}`}>
+                  <TrackVisual value={track.slug} />
+                  <div><small>{trackDirection(track.slug, track.config?.short ?? "TRACK")}</small><h3>{trackName(track.slug, track.name)}</h3><p>{trackSummary(track.slug, track.description)}</p></div>
                   <footer><span>{track.problems?.length ?? 0} 个题目</span><ArrowRight size={16} /></footer>
-                </Link>
+                </Link>{competition.slug === WUJIE_SLUG && <WujieTaskDocuments trackSlug={track.slug} />}</article>
               ))}
             </div>
+            {competition.slug === WUJIE_SLUG && <WujiePrizes />}
           </RevealSection>
         ) : <EmptyState title="暂无公开赛事" description="赛事发布后会在这里显示。" />}
 
@@ -196,14 +201,14 @@ export default function Home() {
               {featuredProblems.map(({ problem, track }) => (
                 <Link data-reveal-item className="problem-line" key={problem.id} href={`/competitions/${competition!.slug}/tracks/${track.slug}/problems/${problem.slug}`}>
                   <span className="mono-label">{problem.code}</span>
-                  <div><strong>{problem.title}</strong><span>{track.name} · 难度 {problem.difficulty}/5</span></div>
+                  <div><strong>{problem.title}</strong><span>{trackName(track.slug, track.name)} · 难度 {problem.difficulty}/5</span></div>
                   <StatusPill tone={problem.status === "published" ? "live" : "warm"}>{problem.status === "published" ? "正式赛题" : "候选"}</StatusPill>
                   <ArrowRight size={15} />
                 </Link>
               ))}
             </div> : <EmptyState title="题库正在整理" description="公开题目会按赛道显示。" />}
           </div>
-          {competition && <aside className="deadline-block">
+          {competition && competition.slug !== WUJIE_SLUG && <aside className="deadline-block">
             <div className="deadline-heading"><CalendarDays size={20} /><span>关键日期</span></div>
             <div className="deadline-dates">
               <div className="deadline-date"><strong>{shortDate(competition.registration_closes_at)}</strong><p>报名与组队截止</p></div>
