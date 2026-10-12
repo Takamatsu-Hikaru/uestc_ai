@@ -165,6 +165,11 @@
 .public-shell:has(.home-updates) .news-showcase .update-visual > .article-cover img { height:100%; min-height:0; }
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:360px; min-height:0; aspect-ratio:auto; }
 .public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:190px; }
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual::before,
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual::after,
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual > span,
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual > i { display:none !important; }
+.public-shell:has(.home-updates) .news-showcase .update-featured-visual { overflow:hidden; border-radius:10px 10px 0 0; }
 @media(max-width:700px){
  .public-shell:has(.home-updates) .flagship-section .track-grid { display:grid; overflow:visible; }
  .public-shell:has(.home-updates) .news-showcase .update-featured-visual { height:240px; }
