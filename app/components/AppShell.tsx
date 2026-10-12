@@ -178,7 +178,7 @@ export function AppShell({ children, title, eyebrow, actions, contained = true, 
             </div>
             <div className="footer-bottom">
               <FooterCodeDivider />
-              <span>© 2026 UESTC AI 社</span>
+              <span>© 2026 UESTC AI 社 · 作者：UESTC 闻家贤 · 前端协助 <a href="https://github.com/flash555588" target="_blank" rel="noreferrer">Flash</a></span>
               <div className="egg-footer-entry"><span>COMPETE · PUBLISH · BUILD</span><EasterEggEntrance /></div>
             </div>
           </footer>
