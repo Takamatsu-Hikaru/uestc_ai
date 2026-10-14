@@ -1117,6 +1117,67 @@ class PlatformApiTestCase(unittest.TestCase):
         self.assertEqual(self.member.delete(f"/api/registrations/{registration['id']}").status_code, 204)
         self.assertEqual(self.member.delete(f"/api/teams/{team['id']}").status_code, 204)
 
+    def test_team_captain_manages_members_and_members_can_leave(self):
+        competition = self.member.get("/api/competitions/paper-city-2027").get_json()
+
+        self.register(self.member, "captain@std.uestc.edu.cn", "队长同学")
+        teammate = self.app.test_client()
+        self.register(teammate, "teammate@std.uestc.edu.cn", "队友同学")
+        outsider = self.app.test_client()
+        self.register(outsider, "outsider@std.uestc.edu.cn", "队外同学")
+
+        team = self.member.post("/api/teams", json={
+            "competition_id": competition["id"],
+            "name": "成员管理队伍",
+        })
+        self.assertEqual(team.status_code, 201, team.get_json())
+        team = team.get_json()
+        self.assertEqual(team["members"][0]["name"], "队长同学")
+
+        unknown = self.member.post(f"/api/teams/{team['id']}/members", json={"email": "nobody@std.uestc.edu.cn"})
+        self.assertEqual(unknown.status_code, 404, unknown.get_json())
+        self.assertEqual(unknown.get_json()["error"], "no account uses this email")
+
+        forbidden_add = outsider.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"})
+        self.assertEqual(forbidden_add.status_code, 403, forbidden_add.get_json())
+        self.assertEqual(forbidden_add.get_json()["error"], "team captain required")
+
+        added = self.member.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"})
+        self.assertEqual(added.status_code, 201, added.get_json())
+        self.assertEqual({member["name"] for member in added.get_json()["members"]}, {"队长同学", "队友同学"})
+
+        duplicate = self.member.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"})
+        self.assertEqual(duplicate.status_code, 409, duplicate.get_json())
+        self.assertEqual(duplicate.get_json()["error"], "team member already exists")
+
+        teammate_id = next(member["id"] for member in added.get_json()["members"] if member["name"] == "队友同学")
+        captain_id = added.get_json()["captain_id"]
+
+        self_removal = self.member.delete(f"/api/teams/{team['id']}/members/{captain_id}")
+        self.assertEqual(self_removal.status_code, 400, self_removal.get_json())
+        self.assertEqual(self_removal.get_json()["error"], "cannot remove team captain")
+
+        captain_leaving = self.member.post(f"/api/teams/{team['id']}/leave")
+        self.assertEqual(captain_leaving.status_code, 409, captain_leaving.get_json())
+        self.assertEqual(captain_leaving.get_json()["error"], "team captain cannot leave")
+
+        outsider_transfer = outsider.post(f"/api/teams/{team['id']}/captain", json={"user_id": teammate_id})
+        self.assertEqual(outsider_transfer.status_code, 403, outsider_transfer.get_json())
+
+        transferred = self.member.post(f"/api/teams/{team['id']}/captain", json={"user_id": teammate_id})
+        self.assertEqual(transferred.status_code, 200, transferred.get_json())
+        self.assertEqual(transferred.get_json()["captain_id"], teammate_id)
+
+        left = self.member.post(f"/api/teams/{team['id']}/leave")
+        self.assertEqual(left.status_code, 200, left.get_json())
+        self.assertEqual([member["name"] for member in left.get_json()["members"]], ["队友同学"])
+        self.assertEqual(self.member.get("/api/me/teams").get_json(), [])
+        self.assertEqual(len(teammate.get("/api/me/teams").get_json()), 1)
+
+        removed = teammate.delete(f"/api/teams/{team['id']}/members/{teammate_id}")
+        self.assertEqual(removed.status_code, 400, removed.get_json())
+        self.assertEqual(removed.get_json()["error"], "cannot remove team captain")
+
 
 if __name__ == "__main__":
     unittest.main()
