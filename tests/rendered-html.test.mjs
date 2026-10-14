@@ -88,9 +88,9 @@ test("about content lives on its own linked page", async () => {
   const about = await readFile(new URL("../app/about/page.tsx", import.meta.url), "utf8");
   const shell = await readFile(new URL("../app/components/AppShell.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(home, /home-about|从浩瀚数据中提炼世界规律/);
-  assert.match(about, /title="关于我们"/);
-  assert.match(about, /从浩瀚数据中提炼世界规律/);
-  assert.match(about, /我们相信智能的核心是同理心/);
+  assert.match(about, /title="关于 AI 社"/);
+  assert.match(about, /电子科技大学 AI 社/);
+  assert.match(about, /ai-club-overview\.svg/);
   assert.match(shell, /href: "\/about", label: "关于我们"/);
   assert.match(shell, /<Link href="\/about">关于我们<\/Link>/);
 });
@@ -179,7 +179,7 @@ test("homepage follows the reference video sequence with kinetic type", async ()
   assert.match(sectionCss, /Balanced homepage grids and a consistent reading rhythm/);
   assert.match(sectionCss, /grid-template-columns: minmax\(300px, 1\.25fr\) repeat\(3/);
   assert.match(sectionCss, /track-card:is\(\.track-coral, \.track-ink, \.track-sage, \.track-sand\)/);
-  assert.match(page, /从想法，到<br \/>被看见。/);
+  assert.match(page, /比赛、项目<br \/>与交流。/);
   assert.match(sectionCss, /grid-template-columns: minmax\(330px, 1\.25fr\) repeat\(3/);
   assert.match(sectionCss, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(sectionCss, /Unified public typography scale/);

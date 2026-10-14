@@ -174,7 +174,7 @@ export default function Home() {
         ) : competition ? (
           <RevealSection className="home-section flagship-section">
             <header className="section-header">
-              <div><span className="eyebrow"><i />TRACKS</span><h2>赛事赛道</h2></div>
+              <div><span className="eyebrow"><i />TRACKS</span><h2>赛事赛道</h2><span className="mobile-swipe-hint" aria-hidden="true">左右滑动查看赛道 <ArrowRight size={14} /></span></div>
               <Link href={`/competitions/${competition.slug}`}>完整赛事说明 <ArrowRight size={15} /></Link>
             </header>
             {competition.slug === "wujie-cup-2026" && <div className="home-competition-feature"><CompetitionPoster /><div className="competition-feature-copy"><span className="eyebrow">2026 · UESTC AI</span><h3>{competition.name}</h3><p>{competitionSummary(competition.slug, competition.summary)}</p><WujieAudience /><div className="competition-topics"><span><ScanEye size={20} />计算机视觉</span><span><Boxes size={20} />Agent</span><span><Bot size={20} />具身智能</span></div><div className="wujie-intro-actions"><Link className="primary-button" href={`/competitions/${competition.slug}`}>赛事详情 <ArrowRight size={17} /></Link></div></div></div>}
