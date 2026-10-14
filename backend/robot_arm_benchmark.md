@@ -47,7 +47,7 @@ target 为世界坐标（米），X/Y ±0.35、Z 0.8—1.3；统一位置伺服�
 | stable_grasps | 连续真实抓取至少 hold_steps 的事件 / 所有抓取事件；无事件为 0。 |
 | recovery_success | 夹爪仍命令关闭却在空中失去抓取后，再次连续抓取 hold_steps 的次数 / 掉落次数；无掉落为 0，主动松手不算掉落。表示恢复抓取，不等同于整个任务成功。 |
 | action_count | 有效和无效动作指令总数，不是物理步数。 |
-| execution_seconds | 场景 reset 完成且选手确认后的实际决策与执行时间。Worker 总时限另含启动、下载、所有场景和收尾。 |
+| execution_seconds | 场景 reset 完成且选手确认后的实际决策与执行时间。Worker 总时限另含环境启动与所有场景；程序包下载在运行计时前，证据上传和容器清理在运行结束后。 |
 | invalid_actions | 不符合有界动作协议的消息数。 |
 | stable_seconds | 最长连续满足目标步数 / 20；达到 hold_steps 即结束场景。 |
 

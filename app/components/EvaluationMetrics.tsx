@@ -1,10 +1,8 @@
 import type { EvaluationConfig, EvaluationRun } from "@/app/lib/domain";
 import { resolveMarkdownUrl } from "@/app/lib/api";
 import { Check, Circle } from "lucide-react";
-
-const statusLabels: Record<EvaluationRun["status"], string> = {
-  queued: "等待运行", running: "正在运行", completed: "运行完成", failed: "运行失败", superseded: "已更新提交",
-};
+import { EvaluationTiming } from "@/app/components/EvaluationTiming";
+import { evaluationStatus } from "@/app/lib/evaluation-timing";
 
 const difficultyLabels = { beginner: "入门", intermediate: "进阶", challenge: "挑战" } as const;
 type ScenarioEpisode = Extract<EvaluationRun["episodes"][number], { scenario: object }>;
@@ -18,12 +16,12 @@ function metricValue(value: number | undefined, unit?: string) {
   return <>{value?.toLocaleString("zh-CN", { maximumFractionDigits: 2 }) ?? "-"}{unit ? <small> {unit}</small> : null}</>;
 }
 
-export function EvaluationMetrics({ config, run }: { config?: EvaluationConfig; run?: EvaluationRun | null }) {
+export function EvaluationMetrics({ config, run, showTiming = true }: { config?: EvaluationConfig; run?: EvaluationRun | null; showTiming?: boolean }) {
   if (!config?.adapter) return null;
   const definitions = Object.fromEntries((run?.metric_definitions ?? []).map((metric) => [metric.key, metric]));
   return <section className="evaluation-results" aria-label="运行指标">
-    <header><strong>运行指标</strong><span>{run ? statusLabels[run.status] : "等待提交"}</span></header>
-    {run && <p>本次测试时长上限：{run.time_seconds ?? config.resources.time_seconds} 秒（全部场景共用）</p>}
+    <header><strong>运行指标</strong><span>{run ? evaluationStatus(run) : "等待提交"}</span></header>
+    {run && showTiming && <EvaluationTiming run={run} />}
     {run?.status === "completed" ? <>
       {run.performance && <p><strong>自动表现分：{run.performance.score.toFixed(2)} / 100</strong> · 按题面公式计算，正式提交后用于第一阶段评分。</p>}
       <h4>跨场景平均</h4>

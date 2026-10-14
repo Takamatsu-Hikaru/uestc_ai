@@ -12,6 +12,7 @@ from pathlib import Path
 import secrets
 import subprocess
 import threading
+import time
 import zipfile
 
 from werkzeug.serving import make_server
@@ -36,8 +37,12 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--full-steps', action='store_true')
     parser.add_argument('--negative', action='store_true')
+    parser.add_argument('--timeout-phase', choices=['import', 'reset', 'act'],
+                        help='Deliberately hang contestant code and verify termination, quota and queue release')
     parser.add_argument('--time-limit', type=int, default=600)
     args = parser.parse_args()
+    if args.negative and args.timeout_phase:
+        parser.error('--negative and --timeout-phase are mutually exclusive')
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     images = [subprocess.check_output(['docker','image','inspect','--format','{{.Id}}',name], text=True).strip()
@@ -52,6 +57,8 @@ def main():
     problem_data = deepcopy(catalogue['tracks'][1 if kind == 'world' else 2]['problem'])
     problem_data['evaluation_config']['api'] = {'enabled':False,'max_calls':0}
     problem_data['evaluation_config']['resources']['time_seconds'] = args.time_limit
+    if args.timeout_phase:
+        problem_data['evaluation_config']['max_team_runs'] = 1
     adapter = problem_data['evaluation_config']['adapter']
     token = secrets.token_urlsafe(32)
     app = create_app({'TESTING':True, 'SQLALCHEMY_DATABASE_URI':'sqlite:///' + (output/'test.sqlite3').as_posix(),
@@ -89,15 +96,82 @@ def main():
         assert 'seed' not in observation and 'object-state' not in observation
         return {'task_success':100}
 '''
+        if args.timeout_phase:
+            source = f'''import time
+def hang(phase):
+    print('TIMEOUT_PROBE_ENTERED:' + phase, flush=True)
+    time.sleep(86400)
+if {args.timeout_phase!r} == 'import': hang('import')
+class Agent:
+    def reset(self, goal):
+        if {args.timeout_phase!r} == 'reset': hang('reset')
+    def act(self, observation): hang('act')
+'''
         package = io.BytesIO()
         with zipfile.ZipFile(package,'w') as archive:
             archive.writestr('agent.py',source); archive.writestr('config.json','{}')
         staged = checked(member.post('/api/submission-assets/stage', data={'file':(io.BytesIO(package.getvalue()),'agent.zip')}),201)
         trial = checked(member.post(f"/api/problems/{problem['id']}/evaluation-runs", json={'team_id':team['id'],'staged_asset_ids':[staged['id']]}),201)
         job = checked(worker.post('/api/evaluation-worker/claim', headers={'Authorization':'Bearer '+token},
-            json={'adapters':[adapter],'gpu':False,'managed_runtime':True}))
+            json={'adapters':[adapter],'gpu':False,'managed_runtime':True,'worker_id':'timeout-smoke-node'}))
+        claim_headers = {'Authorization':'Bearer '+token}
+        claim_config = {'adapters':[adapter],'gpu':False,'managed_runtime':True,'worker_id':'timeout-smoke-node'}
+        waiting_trial = None
+        if args.timeout_phase:
+            following = app.test_client()
+            email = 'following-smoke@std.uestc.edu.cn'
+            challenge = checked(following.post('/api/auth/captcha', json={'email':email}))
+            code = checked(following.post('/api/auth/verification-codes', json={'email':email,
+                'captcha_id':challenge['id'],'captcha_code':challenge['debug_code']}),202)['debug_code']
+            checked(following.post('/api/auth/register', json={'email':email,'name':'Following Smoke',
+                'password':'Acceptance123!','confirm_password':'Acceptance123!','verification_code':code}),201)
+            next_team = checked(following.post('/api/teams', json={'competition_id':competition['id'],'name':'Following Smoke'}),201)
+            checked(following.post('/api/registrations', json={'competition_id':competition['id'],
+                'track_id':track['id'],'team_id':next_team['id']}),201)
+            next_asset = checked(following.post('/api/submission-assets/stage',
+                data={'file':(io.BytesIO(package.getvalue()),'agent.zip')}),201)
+            waiting_trial = checked(following.post(f"/api/problems/{problem['id']}/evaluation-runs",
+                json={'team_id':next_team['id'],'staged_asset_ids':[next_asset['id']]}),201)
+            checked(worker.post('/api/evaluation-worker/claim', headers=claim_headers,json=claim_config),204)
         print(f'Real {args.adapter} started: 3 independently reset tasks', flush=True)
-        result = execute(f'http://127.0.0.1:{server.server_port}/api',job,{},'','','',log_directory=str(output))
+        started = time.monotonic()
+        try:
+            result = execute(f'http://127.0.0.1:{server.server_port}/api',job,{},'','','',log_directory=str(output))
+        except subprocess.TimeoutExpired:
+            failed = checked(worker.post(f"/api/evaluation-worker/runs/{job['id']}/complete",
+                headers={'X-Evaluation-Lease':job['lease_token']},
+                json={'status':'failed','error':'evaluation time limit exceeded'}))
+            if not args.timeout_phase:
+                raise
+            elapsed = round(time.monotonic() - started, 2)
+            assert 'TIMEOUT_PROBE_ENTERED:' + args.timeout_phase in (output/'agent.log').read_text(), 'Agent did not reach the requested hang phase'
+            visible = checked(member.get(f"/api/evaluation-runs/{trial['id']}"))
+            assert visible['status'] == 'failed' and visible['error'] == 'evaluation time limit exceeded'
+            budget = checked(member.get(f"/api/problems/{problem['id']}/evaluation-budget?team_id={team['id']}"))
+            assert budget['used_runs'] == 1 and budget['remaining_runs'] == 0
+            checked(member.post(f"/api/problems/{problem['id']}/evaluation-runs",
+                json={'team_id':team['id'],'staged_asset_ids':[staged['id']]}),429)
+            checked(worker.post(f"/api/evaluation-worker/runs/{job['id']}/api",
+                headers={'X-Evaluation-API-Token':job['api_token']},json={'messages':[]}),403)
+            checked(worker.post(f"/api/evaluation-worker/runs/{job['id']}/heartbeat",
+                headers={'X-Evaluation-Lease':job['lease_token']}),403)
+            assert not subprocess.check_output(['docker','ps','-aq','--filter','label=uestc.evaluation_run='+trial['id']],text=True).strip()
+            next_job = checked(worker.post('/api/evaluation-worker/claim',headers=claim_headers,json=claim_config))
+            assert next_job['id'] == waiting_trial['id'], 'Timeout did not release the next team in the queue'
+            checked(worker.post(f"/api/evaluation-worker/runs/{next_job['id']}/complete",
+                headers={'X-Evaluation-Lease':next_job['lease_token']},
+                json={'status':'failed','error':'queue admission probe only; no execution requested'}))
+            report = {'status':'passed','adapter':adapter,'real_environment':True,'production_api':False,
+                'upstream_model_tested':False,'controller_image':images[0],'agent_image':images[1],
+                'timeout_phase':args.timeout_phase,'time_limit_seconds':args.time_limit,
+                'elapsed_seconds_including_cleanup':elapsed,'timeout_verified':True,'containers_cleaned':True,
+                'team_failure_visible':True,'quota_enforced':True,'terminal_api_and_lease_rejected':True,
+                'next_team_claimed':True,'next_team_executed':False,'evaluation':failed}
+            (output/'verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+            print(json.dumps({k:v for k,v in report.items() if k!='evaluation'},ensure_ascii=False),flush=True)
+            return
+        if args.timeout_phase:
+            raise AssertionError('The deliberately hanging agent completed without a timeout')
         completed = checked(worker.post(f"/api/evaluation-worker/runs/{job['id']}/complete", headers={'X-Evaluation-Lease':job['lease_token']},json=result))
         assert len(completed['artifacts']) == 6
         if args.negative:
