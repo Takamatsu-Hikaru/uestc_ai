@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, ChevronDown, Play, RefreshCw } from "lucide-react";
 import { EvaluationMetrics } from "@/app/components/EvaluationMetrics";
 import { EvaluationTiming } from "@/app/components/EvaluationTiming";
+import { EvaluationLogs } from "@/app/components/EvaluationLogs";
 import { api } from "@/app/lib/api";
 import type { EvaluationBudget, EvaluationConfig, EvaluationRun } from "@/app/lib/domain";
 import { evaluationStatus, formatEvaluationLimit } from "@/app/lib/evaluation-timing";
@@ -39,7 +40,8 @@ export function EvaluationTrials({ problemId, teamId, config, budget, busy, disa
       <EvaluationTiming run={run} />
       {run.dispatch && <p role="status"><strong>{run.dispatch.label}</strong>{run.dispatch.detail ? ` · ${run.dispatch.detail}` : ""}</p>}
       {run.quota_refunded && <p>本次未执行，测试机会已退回。</p>}
-      {expandedId === run.id && <EvaluationMetrics config={config} run={run} showTiming={false} />}
+      {expandedId === run.id && <EvaluationMetrics config={config} run={run} showTiming={false} showLogs={false} />}
+      <EvaluationLogs run={run} />
     </article>)}</div>}
     <p className="trial-selection-note">{selectedId ? "已选择测评结果。正式提交时请保留与该次测试完全相同的程序包；报告和说明可以完善。" : "测试完成后，选择一条成功生成指标的记录用于正式提交。"}</p>
   </section>;

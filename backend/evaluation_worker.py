@@ -25,6 +25,7 @@ from uuid import uuid4
 from pathlib import Path
 from evaluation_evidence import upload as upload_evidence_file
 from evaluation_docker_limits import check_memory_budget, docker_limits, failure_message, node_memory_budget
+from evaluation_logs import RunLogs
 
 WORKER_USER_AGENT = "Mozilla/5.0 UESTC-EvaluationCheck"
 
@@ -95,7 +96,7 @@ def pinned_image(image: str) -> bool:
 
 
 def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image: str,
-                      scenarios_path: str, proxy_url: str, network: str, log_directory: str = ""):
+                      scenarios_path: str, proxy_url: str, network: str, log_directory: str = "", logs=None):
     config = job["config"]
     check_memory_budget(config)
     resources = config["resources"]
@@ -137,6 +138,7 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
         ipc.mkdir(mode=0o775)
         os.chmod(ipc, 0o775)
         download(base, job["asset_url"], job["lease_token"], inputs / "package.zip")
+        if logs: logs.event('程序包下载完成，准备启动环境与选手程序')
         os.chmod(inputs / "package.zip", 0o644)
         (inputs / "config.json").write_text(json.dumps(config), encoding="utf-8")
         prefix = "robot-arm" if robot else "minecraft"
@@ -146,7 +148,7 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
         ipc_volume = "minecraft-ipc-" + uuid4().hex if os.name == "nt" else None
         ipc_mount = (f"type=volume,src={ipc_volume},dst=/ipc" if ipc_volume
                      else f"type=bind,src={ipc.resolve()},dst=/ipc")
-        common = ["--init", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+        common = ["--init", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--env", "PYTHONUNBUFFERED=1",
                   "--label", "uestc.evaluation_run=" + job["id"],
                   "--label", "uestc.worker_id=" + os.environ.get('EVALUATION_WORKER_ID', 'legacy')]
         controller = [
@@ -156,7 +158,7 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
             "--hostname=localhost",
             "--tmpfs=/tmp:rw,exec,nosuid,size=2048m", "--env", "MINEDOJO_HEADLESS=1",
             # Java's nested debug files are root-owned. Keep them on the
-            # controller tmpfs; stdout is retained in the worker's private log.
+            # controller tmpfs; sanitized copies are published by the host worker.
             "--env", "MINEDOJO_DEBUG_LOG=1", "--env", "MALMO_MINECRAFT_OUTPUT_LOGDIR=/tmp/minecraft-logs",
             "--mount", f"type=bind,src={(inputs / 'config.json').resolve()},dst=/input/config.json,readonly",
             "--mount", f"type=bind,src={scenarios},dst=/scenarios/scenarios.json,readonly",
@@ -185,11 +187,15 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
         deadline = time.monotonic() + resources["time_seconds"]
         controller_process = None
         thread.start()
-        logs = Path(log_directory) if log_directory else root
-        logs.mkdir(parents=True, exist_ok=True)
+        log_path = Path(log_directory) if log_directory else root
+        log_path.mkdir(parents=True, exist_ok=True)
         try:
-            with (logs / "controller.log").open("wb") as controller_log, (logs / "agent.log").open("wb") as agent_log:
+            with (log_path / "controller.log").open("wb") as controller_log, (log_path / "agent.log").open("wb") as agent_log:
                 controller_process = subprocess.Popen(controller, stdout=controller_log, stderr=subprocess.STDOUT)
+                if logs:
+                    logs.watch('controller', Path(log_directory)/'controller.log')
+                    logs.watch('agent', Path(log_directory)/'agent.log')
+                    logs.event('环境容器已启动，等待通信接口就绪')
                 ready_deadline = min(deadline, time.monotonic() + 120)
                 while True:
                     ready_remaining = ready_deadline - time.monotonic()
@@ -200,6 +206,7 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
                                             timeout=min(10, ready_remaining), check=False).returncode == 0
                              if ipc_volume else (ipc / "agent.sock").exists())
                     if ready:
+                        if logs: logs.event('环境通信接口就绪，启动选手程序')
                         break
                     if stopped.is_set() or controller_process.poll() is not None:
                         raise RuntimeError(failure_message(trusted_name, '仿真环境', label + " controller exited before starting its socket"))
@@ -231,8 +238,30 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
                         upload_evidence_file(base, job, f"scene-{index}-{filename}", output / "evidence" / str(index) / filename)
             return {"status": "completed", "episodes": result["episodes"]}
         finally:
+            if logs:
+                logs.event('停止并清理选手与环境容器')
+                # Stop execution before collecting Java files from the container.
+                for name in (agent_name, trusted_name):
+                    try:
+                        subprocess.run(['docker','kill',name],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=5,check=False)
+                    except (OSError, subprocess.TimeoutExpired):pass
+                if not robot:
+                    auxiliary = Path(log_directory)/'environment-files'
+                    try:
+                        subprocess.run(['docker','cp',trusted_name+':/tmp/minecraft-logs',str(auxiliary)],
+                            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=5,check=False)
+                        environment = Path(log_directory)/'environment.log'
+                        with environment.open('wb') as combined:
+                            for path in sorted(auxiliary.rglob('*')):
+                                if path.is_file() and not path.is_symlink():
+                                    combined.write(('\n=== '+path.name+' ===\n').encode())
+                                    with path.open('rb') as incoming: shutil.copyfileobj(incoming,combined,65536)
+                        logs.watch('environment',environment)
+                    except (OSError, subprocess.TimeoutExpired) as error:
+                        logs.event('环境附加日志收集失败：'+str(error))
             remove_container(agent_name)
             remove_container(trusted_name)
+            if logs: logs.event('容器清理命令执行完毕')
             if controller_process is not None:
                 try:
                     controller_process.wait(timeout=10)
@@ -245,15 +274,21 @@ def execute_isolated_agent(base: str, job: dict, trusted_image: str, agent_image
             stopped.set()
             thread.join(timeout=2)
             if log_directory and (output / "evidence").is_dir():
-                shutil.copytree(output / "evidence", logs / "evidence", dirs_exist_ok=True)
+                shutil.copytree(output / "evidence", log_path / "evidence", dirs_exist_ok=True)
 
 
-def execute_minecraft(base, job, trusted_image, agent_image, scenarios_path, proxy_url, network, log_directory=""):
-    return execute_isolated_agent(base, job, trusted_image, agent_image, scenarios_path, proxy_url, network, log_directory)
+def execute_minecraft(base, job, trusted_image, agent_image, scenarios_path, proxy_url, network, log_directory="", logs=None):
+    return execute_isolated_agent(base, job, trusted_image, agent_image, scenarios_path, proxy_url, network, log_directory, logs)
 
 
 def execute(base: str, job: dict, images: dict[str, str], proxy_url: str, network: str, gpu_device: str,
             agent_image: str = "", scenarios_path: str = "", log_directory: str = ""):
+    with RunLogs(base,job,log_directory) as logs:
+        return _execute(base,job,images,proxy_url,network,gpu_device,agent_image,scenarios_path,str(logs.root),logs)
+
+
+def _execute(base: str, job: dict, images: dict[str, str], proxy_url: str, network: str, gpu_device: str,
+            agent_image: str = "", scenarios_path: str = "", log_directory: str = "", logs=None):
     config = job["config"]
     check_memory_budget(config)
     runtime = job.get("runtime")
@@ -267,14 +302,14 @@ def execute(base: str, job: dict, images: dict[str, str], proxy_url: str, networ
         with tempfile.TemporaryDirectory(prefix="robot-scenes-") as directory:
             cases = Path(directory) / "scenarios.json"
             cases.write_text(json.dumps(runtime["scenarios"]), encoding="utf-8")
-            return execute_isolated_agent(base, job, image, runtime.get("agent_image", ""), str(cases), proxy_url, network, log_directory)
+            return execute_isolated_agent(base, job, image, runtime.get("agent_image", ""), str(cases), proxy_url, network, log_directory, logs)
     if config["adapter"] == "minecraft-agent-v1" and config["task"] == "open-world":
         if runtime:
             with tempfile.TemporaryDirectory(prefix="private-scenes-") as directory:
                 cases = Path(directory) / "scenarios.json"
                 cases.write_text(json.dumps(runtime["scenarios"]), encoding="utf-8")
-                return execute_minecraft(base, job, image, runtime.get("agent_image", ""), str(cases), proxy_url, network, log_directory)
-        return execute_minecraft(base, job, image, agent_image, scenarios_path, proxy_url, network, log_directory)
+                return execute_minecraft(base, job, image, runtime.get("agent_image", ""), str(cases), proxy_url, network, log_directory, logs)
+        return execute_minecraft(base, job, image, agent_image, scenarios_path, proxy_url, network, log_directory, logs)
     if config["api"]["enabled"] and (not proxy_url or not network):
         raise RuntimeError("API proxy URL and restricted Docker network are required")
     if resources["gpu"] and (not gpu_device or not re.fullmatch(r"(?:GPU-)?[a-zA-Z0-9-]{8,64}", gpu_device)):
@@ -298,7 +333,7 @@ def execute(base: str, job: dict, images: dict[str, str], proxy_url: str, networ
             "docker", "run", "--name", container_name, "--init", "--read-only", "--cap-drop=ALL",
             "--label", "uestc.evaluation_run=" + job["id"],
             "--label", "uestc.worker_id=" + os.environ.get('EVALUATION_WORKER_ID', 'legacy'),
-            "--security-opt=no-new-privileges", "--pids-limit=256", f"--user={runner_user}", "--hostname=localhost",
+            "--security-opt=no-new-privileges", "--pids-limit=256", f"--user={runner_user}", "--hostname=localhost", "--env", "PYTHONUNBUFFERED=1",
             f"--group-add={host_group}",
             *docker_limits(config),
             "--tmpfs=/tmp:rw,noexec,nosuid,size=256m", "--network=" + (network if config["api"]["enabled"] else "none"),
@@ -318,8 +353,12 @@ def execute(base: str, job: dict, images: dict[str, str], proxy_url: str, networ
         thread = threading.Thread(target=heartbeat, args=(base, job["id"], job["lease_token"], stopped, container_name), daemon=True)
         thread.start()
         try:
-            result = subprocess.run(command, timeout=resources["time_seconds"],
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            with (Path(log_directory)/'agent.log').open('wb') as output_log:
+                if logs:
+                    logs.watch('agent',Path(log_directory)/'agent.log')
+                    logs.event('启动测评程序')
+                result = subprocess.run(command, timeout=resources["time_seconds"],
+                                        stdout=output_log, stderr=subprocess.STDOUT, check=False)
             if stopped.is_set():
                 raise RuntimeError("worker lease could not be renewed")
             if result.returncode:
@@ -333,6 +372,7 @@ def execute(base: str, job: dict, images: dict[str, str], proxy_url: str, networ
             return {"status": "completed", "episodes": data["episodes"]}
         finally:
             # Killing the Docker client on timeout does not stop its container.
+            if logs: logs.event('清理测评容器')
             remove_container(container_name)
             stopped.set()
             thread.join(timeout=2)

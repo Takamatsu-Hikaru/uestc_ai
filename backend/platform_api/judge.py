@@ -110,7 +110,9 @@ def startup_command(pool, *, uptime_seconds=MAX_UPTIME_SECONDS):
     root = Path(__file__).resolve().parents[1]
     overlay = {"classification-evidence-worker.py": (root.parent / "deploy/linux/classification-evidence-worker.py").read_text(encoding="utf-8"),
                "evaluation_evidence.py": (root / "evaluation_evidence.py").read_text(encoding="utf-8"),
-               "evaluation_transport.py": (root / "evaluation_transport.py").read_text(encoding="utf-8")}
+               "evaluation_transport.py": (root / "evaluation_transport.py").read_text(encoding="utf-8"),
+               "evaluation_logs.py": (root / "evaluation_logs.py").read_text(encoding="utf-8"),
+               "evaluation_log_safety.py": (root / "evaluation_log_safety.py").read_text(encoding="utf-8")}
     overlay["worker.env"] = "\n".join(f"{key}={shlex.quote(value)}" for key, value in environment.items()) + "\n"
     encoded = base64.b64encode(json.dumps(overlay).encode()).decode()
     bootstrap = ("import base64,json;from pathlib import Path;"

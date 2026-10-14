@@ -157,6 +157,16 @@
 .evaluation-results > .evaluation-timing { margin-bottom: 16px; }
 .trial-history > article > .evaluation-timing { margin: 0 16px 16px; }
 .trial-selection-note { padding-top: 8px; }
+.evaluation-log-panel { min-width: 0; border-top: 1px solid var(--line); }
+.evaluation-log-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 16px; background: transparent; border: 0; color: var(--ink); text-align: left; cursor: pointer; font-size: 14px; font-weight: 600; }
+.evaluation-log-toggle span { font-size: 12px; font-weight: normal; color: var(--muted); }
+.evaluation-log-body { min-width: 0; padding: 0 16px 16px; }
+.evaluation-log-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 4px 0 12px; font-size: 12px; }
+.evaluation-log-tools label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.evaluation-log-tools select { max-width: 100%; min-height: 34px; padding: 5px 8px; font-size: 12px; }
+.evaluation-log-tools .text-button { display: inline-flex; align-items: center; gap: 5px; padding: 0; font-size: 12px; }
+.evaluation-log-body pre { margin: 0 0 10px; padding: 14px; min-height: 100px; max-height: 420px; max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #202822; color: #e3ece1; font-size: 12px; line-height: 1.65; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.evaluation-log-body > small { color: var(--muted); font-size: 12px; }
 @media (max-width: 680px) {
   .submission-decision { flex-direction: column; align-items: stretch; }
   .submission-decision > div { min-width: 0; }

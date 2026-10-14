@@ -97,9 +97,10 @@ def main():
         return {'task_success':100}
 '''
         if args.timeout_phase:
-            source = f'''import time
+            source = f'''import time, sys
 def hang(phase):
     print('TIMEOUT_PROBE_ENTERED:' + phase, flush=True)
+    print('STDERR_PROBE; api_key=sk-' + 'x'*25, file=sys.stderr, flush=True)
     time.sleep(86400)
 if {args.timeout_phase!r} == 'import': hang('import')
 class Agent:
@@ -147,6 +148,13 @@ class Agent:
             assert 'TIMEOUT_PROBE_ENTERED:' + args.timeout_phase in (output/'agent.log').read_text(), 'Agent did not reach the requested hang phase'
             visible = checked(member.get(f"/api/evaluation-runs/{trial['id']}"))
             assert visible['status'] == 'failed' and visible['error'] == 'evaluation time limit exceeded'
+            streams = checked(member.get(f"/api/evaluation-runs/{trial['id']}/logs"))['items']
+            contents = {stream['source']: checked(member.get('/api/evaluation-logs/' + stream['id']))['text'] for stream in streams}
+            assert 'TIMEOUT_PROBE_ENTERED:' + args.timeout_phase in contents['agent']
+            assert 'STDERR_PROBE' in contents['agent'] and 'x'*25 not in contents['agent']
+            assert 'TimeoutExpired' in contents['diagnostics']
+            assert '容器清理命令执行完毕' in contents['worker']
+            assert job['lease_token'] not in ''.join(contents.values()) and job['api_token'] not in ''.join(contents.values())
             budget = checked(member.get(f"/api/problems/{problem['id']}/evaluation-budget?team_id={team['id']}"))
             assert budget['used_runs'] == 1 and budget['remaining_runs'] == 0
             checked(member.post(f"/api/problems/{problem['id']}/evaluation-runs",
@@ -166,7 +174,8 @@ class Agent:
                 'timeout_phase':args.timeout_phase,'time_limit_seconds':args.time_limit,
                 'elapsed_seconds_including_cleanup':elapsed,'timeout_verified':True,'containers_cleaned':True,
                 'team_failure_visible':True,'quota_enforced':True,'terminal_api_and_lease_rejected':True,
-                'next_team_claimed':True,'next_team_executed':False,'evaluation':failed}
+                'next_team_claimed':True,'next_team_executed':False,'logs_persisted_after_timeout':True,
+                'stdout_stderr_and_traceback_verified':True,'log_credentials_redacted':True,'evaluation':failed}
             (output/'verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
             print(json.dumps({k:v for k,v in report.items() if k!='evaluation'},ensure_ascii=False),flush=True)
             return
