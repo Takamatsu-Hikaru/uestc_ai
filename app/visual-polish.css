@@ -8,6 +8,10 @@
 .public-shell .section-header h2 { font-weight:730; }
 .public-shell .page-intro p,.public-shell .community-intro p { color:#58665b; line-height:1.85; max-width:800px; }
 .public-shell strong,.public-shell b { color:var(--ink); font-weight:750; }
+.public-shell .rule-band :is(strong, b) { color:inherit; }
+.public-shell .rule-band :is(p, span, a) { color:#d6ddd2; }
+.public-shell .rule-band > svg,
+.public-shell .rule-band a svg { color:#d6ddd2; }
 .public-shell .markdown-body { background:#fff; color:#39453d; line-height:1.95; padding:clamp(22px,3.5vw,50px); border:1px solid #e5e9e2; border-radius:10px; }
 .public-shell .markdown-body p { margin:0 0 1.3em; }
 .public-shell .markdown-body h2 { color:#263d2e; font-weight:750; margin:2.1em 0 .85em; padding-bottom:12px; border-bottom:1px solid #e1e8df; }

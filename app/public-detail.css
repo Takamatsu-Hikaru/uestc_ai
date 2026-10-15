@@ -155,6 +155,8 @@
   background: #2c4032;
 }
 .public-detail-shell .rule-band p { color: #d2ded0; font-size: 13px; line-height: 1.7; }
+.public-detail-shell .rule-band strong { color: #f1f4ec; font-weight: 700; }
+.public-detail-shell .rule-band a { color: #d2ded0; }
 
 .public-detail-shell .problem-layout { align-items: start; gap: clamp(30px, 4vw, 55px); grid-template-columns: minmax(0, 1fr) 300px; max-width: 1320px; margin-inline: auto; }
 .public-detail-shell .problem-content { min-width: 0; }

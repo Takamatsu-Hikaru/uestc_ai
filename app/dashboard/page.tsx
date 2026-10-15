@@ -1,9 +1,9 @@
 "use client";
 
 import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
-import { UserLinks } from "@/app/components/UserLink";
+import { UserLink } from "@/app/components/UserLink";
 import { FormEvent, useCallback, useMemo, useState } from "react";
-import { ArrowRight, ClipboardCheck, Copy, LogIn, Plus, TicketCheck, Trash2, Users } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Copy, LogIn, LogOut, Plus, ShieldCheck, TicketCheck, Trash2, UserMinus, UserPlus, Users } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { useSession } from "@/app/components/SessionProvider";
@@ -11,7 +11,7 @@ import { useToast } from "@/app/components/ToastProvider";
 import { EmptyState, FieldError, PageLoading, StatusPill } from "@/app/components/ui";
 import { api, formatApiError, jsonBody } from "@/app/lib/api";
 import { copyText } from "@/app/lib/clipboard";
-import type { Competition, Registration, Submission, Team } from "@/app/lib/domain";
+import type { Competition, Registration, Submission, Team, User } from "@/app/lib/domain";
 import { validateForm } from "@/app/lib/formValidation";
 import { useApiResource } from "@/app/lib/useApiResource";
 
@@ -34,6 +34,9 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<null | { kind: "team" | "registration" | "submission"; id: string; title: string }>(null);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [memberDraft, setMemberDraft] = useState<Record<string, string>>({});
+  const [memberError, setMemberError] = useState("");
+  const [memberBusy, setMemberBusy] = useState("");
 
   const { reload: reloadTeams } = teamResource;
   const { reload: reloadRegistrations } = registrationResource;
@@ -78,6 +81,58 @@ export default function DashboardPage() {
     finally { setDeleting(false); }
   }
 
+  async function addMember(event: FormEvent<HTMLFormElement>, team: Team) {
+    event.preventDefault();
+    const email = (memberDraft[team.id] ?? "").trim();
+    setMemberError("");
+    if (memberBusy) return;
+    if (!email) { setMemberError("请先填写队员的注册邮箱。"); return; }
+    setMemberBusy(`add:${team.id}`);
+    try {
+      await api(`/teams/${team.id}/members`, { method: "POST", ...jsonBody({ email }) });
+      setMemberDraft((current) => ({ ...current, [team.id]: "" }));
+      await load();
+      toast.success("已添加队员");
+    } catch (requestError) { setMemberError(formatApiError(requestError)); }
+    finally { setMemberBusy(""); }
+  }
+
+  async function removeMember(team: Team, member: User) {
+    if (memberBusy) return;
+    setMemberError("");
+    setMemberBusy(`remove:${team.id}:${member.id}`);
+    try {
+      await api(`/teams/${team.id}/members/${member.id}`, { method: "DELETE" });
+      await load();
+      toast.success(`已将 ${member.name} 移出队伍`);
+    } catch (requestError) { setMemberError(formatApiError(requestError)); }
+    finally { setMemberBusy(""); }
+  }
+
+  async function makeCaptain(team: Team, member: User) {
+    if (memberBusy) return;
+    setMemberError("");
+    setMemberBusy(`captain:${team.id}:${member.id}`);
+    try {
+      await api(`/teams/${team.id}/captain`, { method: "POST", ...jsonBody({ user_id: member.id }) });
+      await load();
+      toast.success(`已将队长转让给 ${member.name}`);
+    } catch (requestError) { setMemberError(formatApiError(requestError)); }
+    finally { setMemberBusy(""); }
+  }
+
+  async function leaveTeam(team: Team) {
+    if (memberBusy) return;
+    setMemberError("");
+    setMemberBusy(`leave:${team.id}`);
+    try {
+      await api(`/teams/${team.id}/leave`, { method: "POST" });
+      await load();
+      toast.success(`已退出 ${team.name}`);
+    } catch (requestError) { setMemberError(formatApiError(requestError)); }
+    finally { setMemberBusy(""); }
+  }
+
   async function copyInviteCode(inviteCode: string) {
     try {
       await copyText(inviteCode);
@@ -97,17 +152,43 @@ export default function DashboardPage() {
         {error && <div className="inline-alert error">{error}</div>}
         <section className="dashboard-section">
           <header className="section-header"><div><span className="eyebrow"><i />TEAMS</span><h2>我的队伍</h2></div><span className="section-note">邀请码用于邀请成员，不要公开发布</span></header>
-          {teamResource.loading || registrationResource.loading ? <PageLoading label="正在读取队伍" /> : teamResource.error || registrationResource.error ? <div role="alert">{teamResource.error || registrationResource.error}<button type="button" onClick={() => void load()}>重试</button></div> : teams.length ? <div className="team-list">{teams.map((team) => <div className="team-row" key={team.id}>
-            <div className="team-symbol"><Users size={18} /></div><div className="team-main"><strong>{team.name}</strong><span><UserLinks users={team.members ?? []} /></span></div>
-            <button type="button" className="invite-code" title="复制邀请码" onClick={() => void copyInviteCode(team.invite_code)}><Copy size={13} />{team.invite_code}</button>
-            <div className="team-registrations">{(registrationsByTeam[team.id] ?? []).map((registration) => <span className="registration-chip" key={registration.id}><StatusPill tone="live">{registration.track_name}</StatusPill><button type="button" title={`取消 ${registration.track_name} 报名`} aria-label={`取消 ${registration.track_name} 报名`} onClick={() => setDeleteTarget({ kind: "registration", id: registration.id, title: `${team.name} / ${registration.track_name}` })}><Trash2 size={12} /></button></span>)}{!registrationsByTeam[team.id]?.length && <StatusPill tone="muted">尚未报名</StatusPill>}</div>
-            {team.captain_id === user.id ? <button type="button" className="icon-button team-delete" title="删除队伍" aria-label={`删除队伍 ${team.name}`} onClick={() => setDeleteTarget({ kind: "team", id: team.id, title: team.name })}><Trash2 size={15} /></button> : <span />}
-          </div>)}</div> : <EmptyState title="还没有队伍" description="可以创建自己的队伍，或使用邀请码加入。" />}
+          {teamResource.loading || registrationResource.loading ? <PageLoading label="正在读取队伍" /> : teamResource.error || registrationResource.error ? <div role="alert">{teamResource.error || registrationResource.error}<button type="button" onClick={() => void load()}>重试</button></div> : teams.length ? <div className="team-list">{teams.map((team) => {
+            const isCaptain = team.captain_id === user.id;
+            const members = team.members ?? [];
+            return <div className="team-entry" key={team.id}>
+              <div className="team-row">
+                <div className="team-symbol"><Users size={18} /></div>
+                <div className="team-main"><strong>{team.name}</strong><span>{isCaptain ? "你是队长" : "你是队员"} · 共 {members.length} 人</span></div>
+                <button type="button" className="invite-code" title="复制邀请码" onClick={() => void copyInviteCode(team.invite_code)}><Copy size={13} />{team.invite_code}</button>
+                <div className="team-registrations">{(registrationsByTeam[team.id] ?? []).map((registration) => <span className="registration-chip" key={registration.id}><StatusPill tone="live">{registration.track_name}</StatusPill><button type="button" title={`取消 ${registration.track_name} 报名`} aria-label={`取消 ${registration.track_name} 报名`} onClick={() => setDeleteTarget({ kind: "registration", id: registration.id, title: `${team.name} / ${registration.track_name}` })}><Trash2 size={12} /></button></span>)}{!registrationsByTeam[team.id]?.length && <StatusPill tone="muted">尚未报名</StatusPill>}</div>
+                {isCaptain
+                  ? <button type="button" className="icon-button team-delete" title="解散队伍" aria-label={`解散队伍 ${team.name}`} onClick={() => setDeleteTarget({ kind: "team", id: team.id, title: team.name })}><Trash2 size={15} /></button>
+                  : <button type="button" className="icon-button team-leave" title="退出队伍" aria-label={`退出队伍 ${team.name}`} disabled={memberBusy === `leave:${team.id}`} onClick={() => void leaveTeam(team)}><LogOut size={15} /></button>}
+              </div>
+              <div className="team-members">
+                <div className="team-member-list">
+                  {members.map((member) => <span className="team-member" key={member.id}>
+                    <UserLink id={member.id} name={member.name} />
+                    {member.id === team.captain_id && <em className="team-captain">队长</em>}
+                    {isCaptain && member.id !== user.id && <span className="team-member-actions">
+                      <button type="button" title={`将队长转让给 ${member.name}`} aria-label={`将队长转让给 ${member.name}`} disabled={memberBusy === `captain:${team.id}:${member.id}`} onClick={() => void makeCaptain(team, member)}><ShieldCheck size={13} /></button>
+                      <button type="button" title={`将 ${member.name} 移出队伍`} aria-label={`将 ${member.name} 移出队伍`} disabled={memberBusy === `remove:${team.id}:${member.id}`} onClick={() => void removeMember(team, member)}><UserMinus size={13} /></button>
+                    </span>}
+                  </span>)}
+                </div>
+                {isCaptain && <form className="team-member-add" onSubmit={(event) => void addMember(event, team)} noValidate>
+                  <input type="email" aria-label={`邀请队员加入 ${team.name}`} placeholder="队员邮箱" value={memberDraft[team.id] ?? ""} onChange={(event) => setMemberDraft((current) => ({ ...current, [team.id]: event.target.value }))} />
+                  <button className="outline-button" disabled={memberBusy === `add:${team.id}`}><UserPlus size={14} />添加队员</button>
+                </form>}
+              </div>
+            </div>;
+          })}</div> : <EmptyState title="还没有队伍" description="可以创建自己的队伍，或使用邀请码加入。" />}
           <div className="team-actions-grid">
             <form className="form-panel compact-form" onSubmit={createTeam} noValidate><h3>创建队伍</h3><label className="form-field"><span>赛事</span><select value={selectedCompetitionId} onChange={(event) => setCompetitionId(event.target.value)} required>{competitions.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label><label className="form-field"><span>队伍名称</span><input value={teamName} onChange={(event) => setTeamName(event.target.value)} required /></label><button className="outline-button" disabled={!selectedCompetitionId}><Plus size={15} />创建</button></form>
             <form className="form-panel compact-form" onSubmit={joinTeam} noValidate><h3>加入队伍</h3><label className="form-field"><span>8 位邀请码</span><input value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} minLength={8} maxLength={8} required /></label><p>加入后即可和队友共享报名与作品记录。</p><button className="outline-button"><TicketCheck size={15} />加入</button></form>
           </div>
           <FieldError>{error || competitionResource.error}</FieldError>
+          {memberError && <div className="inline-alert error" role="alert">{memberError}</div>}
         </section>
         <section className="dashboard-section">
           <header className="section-header"><div><span className="eyebrow"><i />SUBMISSIONS</span><h2>我的作品</h2></div><Link href="/problems">从题库新建提交 <ArrowRight size={15} /></Link></header>

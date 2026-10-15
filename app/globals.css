@@ -415,7 +415,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .team-list, .submission-list { border-top: 1px solid var(--line); margin-top: 21px; }
 .team-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 15px; grid-template-columns: 38px minmax(0, 1fr) 105px minmax(180px, auto) 32px; min-height: 74px; padding: 11px 3px; }
 .team-symbol { align-items: center; background: var(--ink); color: var(--paper); display: flex; height: 34px; justify-content: center; width: 34px; }
-.team-main strong, .team-main span { display: block; }
+.team-main strong, .team-main > span { display: block; }
 .team-main strong { font-size: 12px; }
 .team-main span { color: var(--quiet); font-size: 12px; margin-top: 3px; }
 .invite-code { align-items: center; background: transparent; border: 1px dashed var(--line-dark); display: inline-flex; font-family: ui-monospace, Consolas, monospace; font-size: 12px; gap: 5px; justify-content: center; padding: 6px; }
@@ -424,7 +424,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .registration-chip > button { align-items: center; background: #dfe7dc; border: 0; color: #71806d; display: inline-flex; justify-content: center; padding: 0 7px 0 2px; }
 .registration-chip > button:hover, .team-delete:hover, .submission-delete:hover { color: var(--danger); }
 .registration-chip .status-pill { padding-right: 5px; }
-.team-delete, .submission-delete { color: var(--quiet); }
+.team-delete, .submission-delete, .team-leave { color: var(--quiet); }
+.team-leave:hover { color: var(--danger); }
+.team-entry { border-bottom: 1px solid var(--line); }
+.team-entry > .team-row { border-bottom: 0; }
+.team-members { align-items: center; background: var(--paper-2); display: flex; flex-wrap: wrap; gap: 9px 14px; justify-content: space-between; padding: 9px 12px; }
+.team-member-list { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 14px; min-width: 0; }
+.team-member { align-items: center; display: inline-flex; gap: 5px; white-space: nowrap; }
+.team-captain { background: #dfe7dc; color: #4f6649; font-size: 12px; font-style: normal; padding: 1px 6px; }
+.team-member-actions { align-items: center; display: inline-flex; gap: 2px; }
+.team-member-actions button { align-items: center; background: transparent; border: 0; color: var(--quiet); display: inline-flex; padding: 3px; }
+.team-member-actions button:hover { color: var(--coral-dark); }
+.team-member-add { align-items: center; display: flex; flex: 0 1 auto; gap: 8px; min-width: 0; }
+.team-member-add input { background: var(--surface); border: 1px solid var(--line-dark); font-size: 12px; min-width: 0; padding: 6px 8px; width: min(240px, 100%); }
+.team-member-add .outline-button { white-space: nowrap; }
 .team-actions-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); margin-top: 20px; }
 .compact-form { align-items: end; display: grid; gap: 13px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
 .compact-form > .form-field { min-width: 0; }
@@ -997,7 +1010,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .team-row { align-items: start; grid-template-columns: 35px minmax(0, 1fr) auto; padding: 14px 0; }
   .team-row > .invite-code { grid-column: 2 / -1; justify-self: start; white-space: nowrap; }
   .team-registrations { grid-column: 2 / -1; justify-content: flex-start; }
-  .team-row > .team-delete, .team-row > span:last-child { grid-column: 3; grid-row: 1; }
+  .team-row > .team-delete, .team-row > .team-leave, .team-row > span:last-child { grid-column: 3; grid-row: 1; }
   .compact-form { grid-template-columns: 1fr; }
   .submission-list > div > a { gap: 10px; grid-template-columns: 24px minmax(0, 1fr) 17px; }
   .submission-list > div > a .status-pill { display: none; }

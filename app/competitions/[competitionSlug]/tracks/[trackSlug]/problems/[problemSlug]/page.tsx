@@ -5,8 +5,9 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Cpu, ExternalLink, FileCheck2, Gauge, Scale } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { Markdown } from "@/app/components/Markdown";
+import { useSession } from "@/app/components/SessionProvider";
 import { PageError, PageLoading, StatusPill } from "@/app/components/ui";
-import type { ProblemDetail } from "@/app/lib/domain";
+import type { ProblemDetail, Registration } from "@/app/lib/domain";
 import { stripRepeatedLead } from "@/app/lib/markdownDisplay";
 import { useApiResource } from "@/app/lib/useApiResource";
 
@@ -18,7 +19,15 @@ const fieldLabels: Record<string, string> = {
 export default function ProblemPage() {
   const params = useParams<{ competitionSlug: string; trackSlug: string; problemSlug: string }>();
   const { competitionSlug, trackSlug, problemSlug } = params;
+  const { user, loading: sessionLoading } = useSession();
   const { data, loading, error, reload } = useApiResource<ProblemDetail>(problemSlug ? `/problems/${problemSlug}` : null);
+  const { data: registrations, loading: registrationsLoading } = useApiResource<Registration[]>(user ? "/me/registrations" : null);
+  const registered = Boolean(registrations?.some((item) => item.competition_id === data?.competition.id && (item.track_id === data?.track.id || item.track_id === null)));
+  const callout = !user
+    ? { title: "准备好提交？", copy: "先登录，并为队伍报名当前赛道。", href: `/login?next=${encodeURIComponent(`/submit/${data?.slug ?? ""}`)}`, action: "登录后提交" }
+    : registered
+      ? { title: "队伍已报名", copy: "你的队伍已经报名这个赛道，可以直接提交或更新作品。", href: `/submit/${data?.slug ?? ""}`, action: "提交这个题目" }
+      : { title: "还差一步报名", copy: "你的队伍还没有报名这个赛道，报名后即可提交。", href: `/submit/${data?.slug ?? ""}`, action: "报名并提交" };
   return (
     <AppShell variant="detail" title={data?.title ?? "题目详情"} eyebrow={data?.code ?? "PROBLEM"} actions={<Link className="outline-button" href={`/competitions/${competitionSlug}/tracks/${trackSlug}`}><ArrowLeft size={15} />返回赛道</Link>}>
       {loading ? <PageLoading /> : error || !data ? <PageError message={error || "题目不存在。"} retry={reload} /> : (
@@ -33,7 +42,7 @@ export default function ProblemPage() {
           <aside className="problem-aside">
             <dl className="facts-list"><div><dt><Gauge size={15} />难度</dt><dd>{data.difficulty}/5</dd></div><div><dt><Cpu size={15} />算力建议</dt><dd>{data.compute_note || "按题目说明"}</dd></div><div><dt><Scale size={15} />运行方式</dt><dd>{data.evaluation_config?.adapter ? "独立环境运行" : "上传材料"}</dd></div></dl>
             {data.source_url && <a className="source-link" href={data.source_url} target="_blank" rel="noreferrer">查看外部资料 <ExternalLink size={14} /></a>}
-            <div className="submit-callout"><span>准备好提交？</span><p>先登录并为队伍报名当前赛道。</p><Link className="primary-button" href={`/submit/${data.slug}`}>提交这个题目 <ArrowRight size={16} /></Link></div>
+            <div className="submit-callout"><span>{sessionLoading || (user && registrationsLoading) ? "正在确认报名状态…" : callout.title}</span><p>{callout.copy}</p><Link className="primary-button" href={callout.href}>{callout.action} <ArrowRight size={16} /></Link></div>
           </aside>
         </div>
       )}

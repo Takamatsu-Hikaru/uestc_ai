@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, current_app, jsonify, request
 
 from ..extensions import db
-from ..models import Competition, Problem, Registration, Submission, Team, TeamMember, Track
+from ..models import Competition, Problem, Registration, Submission, Team, TeamMember, Track, User
 from ..reviewing import validate_scoring_config
 from ..evaluation import validate_evaluation_config
 from ..submission_schema import validate_submission_schema
@@ -241,6 +241,92 @@ def delete_team(team_id: str):
     db.session.delete(team)
     db.session.commit()
     return "", 204
+
+
+@competitions_bp.post("/teams/<team_id>/members")
+@require_user()
+def add_team_member(team_id: str):
+    user = current_user()
+    team = db.session.get(Team, team_id)
+    if not team:
+        return jsonify({"error": "team not found"}), 404
+    if team.captain_id != user.id:
+        return jsonify({"error": "team captain required"}), 403
+    data, error = payload(("email",))
+    if error:
+        return error
+    if deadline_passed(team.competition.registration_closes_at):
+        return registration_deadline_response()
+    member_user = User.query.filter_by(email=data["email"].strip().lower()).first()
+    if not member_user:
+        return jsonify({"error": "no account uses this email"}), 404
+    if team_member(team.id, member_user.id):
+        return jsonify({"error": "team member already exists"}), 409
+    db.session.add(TeamMember(team=team, user=member_user))
+    audit("team.member_added", "team", team.id, {"user_id": member_user.id})
+    db.session.commit()
+    return jsonify(team.to_dict(include_members=True)), 201
+
+
+@competitions_bp.delete("/teams/<team_id>/members/<user_id>")
+@require_user()
+def remove_team_member(team_id: str, user_id: str):
+    user = current_user()
+    team = db.session.get(Team, team_id)
+    if not team:
+        return jsonify({"error": "team not found"}), 404
+    if team.captain_id != user.id:
+        return jsonify({"error": "team captain required"}), 403
+    if user_id == team.captain_id:
+        return jsonify({"error": "cannot remove team captain"}), 400
+    membership = db.session.get(TeamMember, (team.id, user_id))
+    if not membership:
+        return jsonify({"error": "team member not found"}), 404
+    audit("team.member_removed", "team", team.id, {"user_id": user_id})
+    db.session.delete(membership)
+    db.session.commit()
+    return jsonify(team.to_dict(include_members=True))
+
+
+@competitions_bp.post("/teams/<team_id>/leave")
+@require_user()
+def leave_team(team_id: str):
+    user = current_user()
+    team = db.session.get(Team, team_id)
+    if not team:
+        return jsonify({"error": "team not found"}), 404
+    membership = db.session.get(TeamMember, (team.id, user.id))
+    if not membership:
+        return jsonify({"error": "team membership required"}), 403
+    if team.captain_id == user.id:
+        return jsonify({"error": "team captain cannot leave"}), 409
+    audit("team.left", "team", team.id, {"user_id": user.id})
+    db.session.delete(membership)
+    db.session.commit()
+    return jsonify(team.to_dict(include_members=True))
+
+
+@competitions_bp.post("/teams/<team_id>/captain")
+@require_user()
+def transfer_team_captain(team_id: str):
+    user = current_user()
+    team = db.session.get(Team, team_id)
+    if not team:
+        return jsonify({"error": "team not found"}), 404
+    if team.captain_id != user.id:
+        return jsonify({"error": "team captain required"}), 403
+    data, error = payload(("user_id",))
+    if error:
+        return error
+    next_captain_id = data["user_id"].strip()
+    if next_captain_id == team.captain_id:
+        return jsonify({"error": "team captain already assigned"}), 409
+    if not team_member(team.id, next_captain_id):
+        return jsonify({"error": "team member not found"}), 404
+    team.captain_id = next_captain_id
+    audit("team.captain_transferred", "team", team.id, {"from": user.id, "to": next_captain_id})
+    db.session.commit()
+    return jsonify(team.to_dict(include_members=True))
 
 
 @competitions_bp.get("/me/registrations")
