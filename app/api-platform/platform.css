@@ -110,6 +110,8 @@
 .ai-channel-checks legend { color: var(--muted); font-size: 12px; }
 .ai-check { align-items: center; display: flex; font-size: 12px; gap: 7px; }
 .ai-check input { accent-color: var(--sage); }
+.ai-toggle-field { display: grid; gap: 6px; }
+.ai-form-panel .form-hint, .ai-form-grid .form-hint { color: var(--quiet); font-size: 11px; }
 .ai-team-select { max-width: 500px; }
 .ai-playground { display: grid; gap: 20px; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.2fr); }
 .ai-response { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; min-height: 480px; padding: 28px; }

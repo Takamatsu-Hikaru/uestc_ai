@@ -23,6 +23,10 @@ test("the mail page drives the admin API and keeps secrets masked", async () => 
   assert.match(page, /jsonBody\(\{ recipient, draft: draft\(\) \}\)/);
   assert.match(page, /resend_secret: resendSecret/);
   assert.match(page, /smtp_secret: smtpSecret/);
+  // The fallback toggle uses the shared checkbox row, never the label/control grid.
+  assert.match(page, /className="ai-toggle-field ai-wide"/);
+  assert.match(page, /<label className="ai-check"><input type="checkbox"/);
+  assert.doesNotMatch(page, /<span>失败自动切换<\/span>/);
 });
 
 test("mail types and error translations cover the new endpoints", async () => {
