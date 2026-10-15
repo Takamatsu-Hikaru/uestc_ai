@@ -181,9 +181,12 @@ def update_competition(competition_id: str):
         if duplicate:
             return jsonify({"error": "competition slug already exists"}), 409
     try:
-        if isinstance(data.get("config"), dict) and "checkpoints" in data["config"]:
+        if isinstance(data.get("config"), dict):
             from ..progress import validate_checkpoints
-            data["config"]["checkpoints"] = validate_checkpoints(data["config"]["checkpoints"])
+            from ..team_rules import validate_team_rules
+            if "checkpoints" in data["config"]:
+                data["config"]["checkpoints"] = validate_checkpoints(data["config"]["checkpoints"])
+            data["config"].update(validate_team_rules(data["config"]))
         update_fields(competition, data, COMPETITION_FIELDS)
     except (TypeError, ValueError) as error:
         return jsonify({"error": str(error)}), 400

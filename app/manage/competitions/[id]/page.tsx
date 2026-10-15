@@ -42,6 +42,7 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
   const [ends, setEnds] = useState(localDate(competition.ends_at));
   const [teamMin, setTeamMin] = useState(competition.config.team_size?.min ?? 1);
   const [teamMax, setTeamMax] = useState(competition.config.team_size?.max ?? 4);
+  const [maxTracks, setMaxTracks] = useState<number | "">(competition.config.max_tracks ?? "");
   const [submissionLimit, setSubmissionLimit] = useState(competition.config.submission_limit ?? 10);
   const [checkpoints, setCheckpoints] = useState(competition.config.checkpoints ?? []);
   const [error, setError] = useState("");
@@ -106,6 +107,7 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
             ...competition.config,
             overview_md: overview,
             team_size: { min: teamMin, max: teamMax },
+            max_tracks: maxTracks === "" ? null : maxTracks,
             submission_limit: submissionLimit,
             checkpoints,
           },
@@ -166,6 +168,7 @@ function CompetitionEditor({ competition, reload, onDeleted }: {
         <label className="form-field"><span>状态</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="draft">草稿</option><option value="published">发布</option><option value="archived">归档</option></select></label>
         <label className="form-field"><span>最少队员</span><input type="number" min="1" value={teamMin} onChange={(event) => setTeamMin(Number(event.target.value))} /></label>
         <label className="form-field"><span>最多队员</span><input type="number" min={teamMin} value={teamMax} onChange={(event) => setTeamMax(Number(event.target.value))} /></label>
+        <label className="form-field"><span>最多赛道数 · 每队</span><input type="number" min="1" value={maxTracks} onChange={(event) => setMaxTracks(event.target.value === "" ? "" : Number(event.target.value))} placeholder="留空不限" /><small>限制每支队在本场比赛中可报名的赛道数，留空表示不限。</small></label>
         <label className="form-field"><span>提交次数</span><input type="number" min="1" value={submissionLimit} onChange={(event) => setSubmissionLimit(Number(event.target.value))} /></label>
       </div>
       <FieldError>{error}</FieldError>

@@ -9,6 +9,7 @@ import { TrackVisual } from "@/app/components/ClubVisuals";
 import { PageError, PageLoading, StatusPill } from "@/app/components/ui";
 import type { Competition } from "@/app/lib/domain";
 import { formatBeijing } from "@/app/lib/time";
+import { ruleSummary, teamSizeLabel, trackLimitLabel } from "@/app/lib/teamRules";
 import { useApiResource } from "@/app/lib/useApiResource";
 
 function date(value?: string | null) {
@@ -30,6 +31,8 @@ export default function CompetitionPage() {
               <div><dt>报名截止</dt><dd>{date(data.registration_closes_at)}</dd></div>
               <div><dt>比赛开始</dt><dd>{date(data.starts_at)}</dd></div>
               <div><dt>比赛结束</dt><dd>{date(data.ends_at)}</dd></div>
+              <div><dt>队伍人数</dt><dd>{teamSizeLabel(data.config)}</dd></div>
+              <div><dt>赛道数量</dt><dd>{trackLimitLabel(data.config)}</dd></div>
             </dl>
           </section>
           <section className="content-section">
@@ -49,7 +52,7 @@ export default function CompetitionPage() {
           {data.config.overview_md && <section className="content-section competition-rules" aria-label="赛事介绍与细则"><Markdown>{data.config.overview_md}</Markdown></section>}
           <section className="rule-band">
             <CalendarDays size={19} />
-            <div><strong>通用参赛流程</strong><p>创建队伍 → 报名赛道 → 阅读题目 → 提交 README 与作品材料 → 按版本评审。</p></div>
+            <div><strong>通用参赛流程</strong><p>创建队伍 → 报名赛道 → 阅读题目 → 提交 README 与作品材料 → 按版本评审。{ruleSummary(data.config) && `本场规则：${ruleSummary(data.config)}，同一账号只能在一支队伍里。`}</p></div>
             <Link href="/dashboard">打开工作台 <ArrowRight size={15} /></Link>
           </section>
         </>

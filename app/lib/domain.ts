@@ -150,6 +150,7 @@ export type Competition = {
     overview_md?: string;
     checkpoints?: Array<{ id: string; label: string; due_at: string | null }>;
     team_size?: { min: number; max: number };
+    max_tracks?: number | null;
     submission_limit?: number;
     leaderboard?: { visible: boolean; rank_scope?: "track" };
   };

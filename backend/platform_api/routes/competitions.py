@@ -10,6 +10,7 @@ from ..models import Competition, Problem, Registration, Submission, Team, TeamM
 from ..reviewing import validate_scoring_config
 from ..evaluation import validate_evaluation_config
 from ..submission_schema import validate_submission_schema
+from ..team_rules import max_tracks, team_size_range, validate_team_rules
 from ..security import current_user, require_user, team_member
 from ..utils import audit, payload
 
@@ -78,10 +79,12 @@ def create_competition():
         return error
     if Competition.query.filter_by(slug=data["slug"]).first():
         return jsonify({"error": "competition slug already exists"}), 409
-    if isinstance(data.get("config"), dict) and "checkpoints" in data["config"]:
+    if isinstance(data.get("config"), dict):
         from ..progress import validate_checkpoints
         try:
-            data["config"]["checkpoints"] = validate_checkpoints(data["config"]["checkpoints"])
+            if "checkpoints" in data["config"]:
+                data["config"]["checkpoints"] = validate_checkpoints(data["config"]["checkpoints"])
+            data["config"].update(validate_team_rules(data["config"]))
         except ValueError as validation_error:
             return jsonify({"error": str(validation_error)}), 400
     item = Competition(slug=data["slug"], name=data["name"], summary=data["summary"], status=data.get("status", "draft"), config=data.get("config", {}))
@@ -214,6 +217,9 @@ def join_team():
     if not team_member(team.id, user.id):
         if competing_team(team.competition_id, user.id):
             return one_team_per_person_response()
+        _, maximum = team_size_range(team.competition)
+        if maximum is not None and len(team.members) >= maximum:
+            return jsonify({"error": "team is full"}), 409
         db.session.add(TeamMember(team=team, user=user))
         audit("team.joined", "team", team.id)
         db.session.commit()
@@ -374,6 +380,15 @@ def register_team():
     existing = Registration.query.filter_by(competition_id=competition.id, track_id=track_id, team_id=team.id).first()
     if existing:
         return jsonify({"error": "team already registered"}), 409
+    minimum, _ = team_size_range(competition)
+    if len(team.members) < minimum:
+        return jsonify({"error": "team is below the minimum size"}), 409
+    track_cap = max_tracks(competition)
+    if track_id and track_cap is not None:
+        registered_tracks = {row.track_id for row in
+                             Registration.query.filter_by(competition_id=competition.id, team_id=team.id).all()}
+        if len(registered_tracks - {track_id}) >= track_cap:
+            return jsonify({"error": "track limit reached"}), 409
     registration = Registration(competition_id=competition.id, track_id=track_id, team_id=team.id, status="confirmed", fields=data.get("fields", {}))
     db.session.add(registration)
     db.session.flush()

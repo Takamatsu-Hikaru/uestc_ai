@@ -1173,6 +1173,76 @@ class PlatformApiTestCase(unittest.TestCase):
         self.assertEqual(removed.status_code, 400, removed.get_json())
         self.assertEqual(removed.get_json()["error"], "cannot remove team captain")
 
+    def test_competition_team_size_and_track_limits(self):
+        self.login(self.admin, "admin@uestcai.top")
+        created = self.admin.post("/api/competitions", json={
+            "slug": "limited-cup-2027", "name": "Limited cup", "summary": "Rules", "status": "published",
+            "config": {"team_size": {"min": 2, "max": 2}, "max_tracks": 1},
+        })
+        self.assertEqual(created.status_code, 201, created.get_json())
+        competition = created.get_json()
+        self.assertEqual(competition["config"]["team_size"], {"min": 2, "max": 2})
+        self.assertEqual(competition["config"]["max_tracks"], 1)
+
+        rejected = self.admin.patch(f"/api/manage/competitions/{competition['id']}",
+                                    json={"config": {**competition["config"], "max_tracks": 0}})
+        self.assertEqual(rejected.status_code, 400, rejected.get_json())
+        self.assertEqual(rejected.get_json()["error"], "最多赛道数需在 1—100 之间，留空表示不限。")
+
+        track_one = self.admin.post("/api/competitions/limited-cup-2027/tracks",
+                                    json={"slug": "limit-track-one", "name": "One"}).get_json()
+        track_two = self.admin.post("/api/competitions/limited-cup-2027/tracks",
+                                    json={"slug": "limit-track-two", "name": "Two"}).get_json()
+
+        self.register(self.member, "limit-captain@std.uestc.edu.cn", "Limit captain")
+        teammate = self.app.test_client()
+        self.register(teammate, "limit-mate@std.uestc.edu.cn", "Limit mate")
+        spare = self.app.test_client()
+        self.register(spare, "limit-spare@std.uestc.edu.cn", "Limit spare")
+
+        team = self.member.post("/api/teams", json={"competition_id": competition["id"], "name": "Limited squad"})
+        self.assertEqual(team.status_code, 201, team.get_json())
+        team = team.get_json()
+
+        too_small = self.member.post("/api/registrations", json={
+            "competition_id": competition["id"], "track_id": track_one["id"], "team_id": team["id"]})
+        self.assertEqual(too_small.status_code, 409, too_small.get_json())
+        self.assertEqual(too_small.get_json()["error"], "team is below the minimum size")
+
+        self.assertEqual(teammate.post("/api/teams/join", json={"invite_code": team["invite_code"]}).status_code, 200)
+        full = spare.post("/api/teams/join", json={"invite_code": team["invite_code"]})
+        self.assertEqual(full.status_code, 409, full.get_json())
+        self.assertEqual(full.get_json()["error"], "team is full")
+
+        first = self.member.post("/api/registrations", json={
+            "competition_id": competition["id"], "track_id": track_one["id"], "team_id": team["id"]})
+        self.assertEqual(first.status_code, 201, first.get_json())
+        second = self.member.post("/api/registrations", json={
+            "competition_id": competition["id"], "track_id": track_two["id"], "team_id": team["id"]})
+        self.assertEqual(second.status_code, 409, second.get_json())
+        self.assertEqual(second.get_json()["error"], "track limit reached")
+
+        self.assertEqual(self.member.delete(f"/api/registrations/{first.get_json()['id']}").status_code, 204)
+        self.assertEqual(self.member.post("/api/registrations", json={
+            "competition_id": competition["id"], "track_id": track_two["id"], "team_id": team["id"]}).status_code, 201)
+
+    def test_invalid_team_rules_are_rejected(self):
+        self.login(self.admin, "admin@uestcai.top")
+        cases = [
+            ({"team_size": {"min": 3, "max": 2}}, "队伍人数范围需在 1—200 之间，且最少不超过最多。"),
+            ({"team_size": {"min": 0, "max": 2}}, "队伍人数范围需在 1—200 之间，且最少不超过最多。"),
+            ({"team_size": {"min": 1}}, "队伍人数范围需要同时给出最少与最多队员，且都是整数。"),
+            ({"team_size": {"min": 1, "max": 2, "extra": 1}}, "队伍人数范围需要同时给出最少与最多队员，且都是整数。"),
+            ({"max_tracks": 0}, "最多赛道数需在 1—100 之间，留空表示不限。"),
+            ({"max_tracks": "2"}, "最多赛道数需在 1—100 之间，留空表示不限。"),
+        ]
+        for index, (config, message) in enumerate(cases):
+            response = self.admin.post("/api/competitions", json={
+                "slug": f"invalid-rules-{index}", "name": "Invalid", "summary": "Rules", "config": config,
+            })
+            self.assertEqual(response.status_code, 400, response.get_json())
+            self.assertEqual(response.get_json()["error"], message, config)
+
     def test_one_team_per_person_inside_a_competition(self):
         self.login(self.admin, "admin@uestcai.top")
         competition = self.member.get("/api/competitions/paper-city-2027").get_json()
