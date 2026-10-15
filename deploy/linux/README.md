@@ -11,6 +11,16 @@
 - `/etc/uestc-ai/backend.env`、`web.env`：生产配置，root 管理，应用组只读；不得提交到仓库。
 - `uestc-ai-api`、`uestc-ai-web`：以 `uestc-ai` 服务账户运行，由 systemd 自动重启、开机自启。
 
+每个 release 目录在切换 `current` 之前，必须先建好 `backend/data` 与 `backend/uploads` 并归属 `uestc-ai`：
+API 服务带 `ProtectSystem=strict`，只有 `/opt/uestc-ai/shared` 是 `ReadWritePaths`，应用启动时无法在 release 内自建目录，
+缺失时 gunicorn 会以 `OSError: [Errno 30] Read-only file system` 启动失败。部署命令：
+
+```bash
+install -d -o uestc-ai -g uestc-ai -m 0775 \
+  /opt/uestc-ai/releases/<version>/backend/data \
+  /opt/uestc-ai/releases/<version>/backend/uploads
+```
+
 数据库为 PostgreSQL，连接形如 `postgresql+psycopg://user:password@127.0.0.1/database`。关闭 `AUTO_CREATE_SCHEMA`、`SEED_DATABASE`、`EXPOSE_VERIFICATION_CODE`，加载生产配置后执行 `python -m flask --app backend/app.py db upgrade`。启用 HTTPS 后设置 `SESSION_COOKIE_SECURE=1`。只有 Nginx 可以访问回环 API 时才设置 `TRUST_PROXY=1`。
 
 ## 缓存与连接
