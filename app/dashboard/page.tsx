@@ -3,7 +3,7 @@
 import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
 import { UserLink } from "@/app/components/UserLink";
 import { FormEvent, useCallback, useMemo, useState } from "react";
-import { ArrowRight, ClipboardCheck, Copy, LogIn, LogOut, Plus, ShieldCheck, TicketCheck, Trash2, UserMinus, UserPlus, Users } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Copy, LogIn, LogOut, Plus, ShieldCheck, TicketCheck, Trash2, UserMinus, Users } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { useSession } from "@/app/components/SessionProvider";
@@ -34,7 +34,6 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<null | { kind: "team" | "registration" | "submission"; id: string; title: string }>(null);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [memberDraft, setMemberDraft] = useState<Record<string, string>>({});
   const [memberError, setMemberError] = useState("");
   const [memberBusy, setMemberBusy] = useState("");
 
@@ -81,21 +80,6 @@ export default function DashboardPage() {
     finally { setDeleting(false); }
   }
 
-  async function addMember(event: FormEvent<HTMLFormElement>, team: Team) {
-    event.preventDefault();
-    const email = (memberDraft[team.id] ?? "").trim();
-    setMemberError("");
-    if (memberBusy) return;
-    if (!email) { setMemberError("请先填写队员的注册邮箱。"); return; }
-    setMemberBusy(`add:${team.id}`);
-    try {
-      await api(`/teams/${team.id}/members`, { method: "POST", ...jsonBody({ email }) });
-      setMemberDraft((current) => ({ ...current, [team.id]: "" }));
-      await load();
-      toast.success("已添加队员");
-    } catch (requestError) { setMemberError(formatApiError(requestError)); }
-    finally { setMemberBusy(""); }
-  }
 
   async function removeMember(team: Team, member: User) {
     if (memberBusy) return;
@@ -176,10 +160,6 @@ export default function DashboardPage() {
                     </span>}
                   </span>)}
                 </div>
-                {isCaptain && <form className="team-member-add" onSubmit={(event) => void addMember(event, team)} noValidate>
-                  <input type="email" aria-label={`邀请队员加入 ${team.name}`} placeholder="队员邮箱" value={memberDraft[team.id] ?? ""} onChange={(event) => setMemberDraft((current) => ({ ...current, [team.id]: event.target.value }))} />
-                  <button className="outline-button" disabled={memberBusy === `add:${team.id}`}><UserPlus size={14} />添加队员</button>
-                </form>}
               </div>
             </div>;
           })}</div> : <EmptyState title="还没有队伍" description="可以创建自己的队伍，或使用邀请码加入。" />}

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, current_app, jsonify, request
 
 from ..extensions import db
-from ..models import Competition, Problem, Registration, Submission, Team, TeamMember, Track, User
+from ..models import Competition, Problem, Registration, Submission, Team, TeamMember, Track
 from ..reviewing import validate_scoring_config
 from ..evaluation import validate_evaluation_config
 from ..submission_schema import validate_submission_schema
@@ -241,31 +241,6 @@ def delete_team(team_id: str):
     db.session.delete(team)
     db.session.commit()
     return "", 204
-
-
-@competitions_bp.post("/teams/<team_id>/members")
-@require_user()
-def add_team_member(team_id: str):
-    user = current_user()
-    team = db.session.get(Team, team_id)
-    if not team:
-        return jsonify({"error": "team not found"}), 404
-    if team.captain_id != user.id:
-        return jsonify({"error": "team captain required"}), 403
-    data, error = payload(("email",))
-    if error:
-        return error
-    if deadline_passed(team.competition.registration_closes_at):
-        return registration_deadline_response()
-    member_user = User.query.filter_by(email=data["email"].strip().lower()).first()
-    if not member_user:
-        return jsonify({"error": "no account uses this email"}), 404
-    if team_member(team.id, member_user.id):
-        return jsonify({"error": "team member already exists"}), 409
-    db.session.add(TeamMember(team=team, user=member_user))
-    audit("team.member_added", "team", team.id, {"user_id": member_user.id})
-    db.session.commit()
-    return jsonify(team.to_dict(include_members=True)), 201
 
 
 @competitions_bp.delete("/teams/<team_id>/members/<user_id>")

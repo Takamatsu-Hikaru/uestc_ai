@@ -435,9 +435,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .team-member-actions { align-items: center; display: inline-flex; gap: 2px; }
 .team-member-actions button { align-items: center; background: transparent; border: 0; color: var(--quiet); display: inline-flex; padding: 3px; }
 .team-member-actions button:hover { color: var(--coral-dark); }
-.team-member-add { align-items: center; display: flex; flex: 0 1 auto; gap: 8px; min-width: 0; }
-.team-member-add input { background: var(--surface); border: 1px solid var(--line-dark); font-size: 12px; min-width: 0; padding: 6px 8px; width: min(240px, 100%); }
-.team-member-add .outline-button { white-space: nowrap; }
 .team-actions-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); margin-top: 20px; }
 .compact-form { align-items: end; display: grid; gap: 13px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
 .compact-form > .form-field { min-width: 0; }

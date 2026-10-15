@@ -1138,24 +1138,15 @@ class PlatformApiTestCase(unittest.TestCase):
         team = team.get_json()
         self.assertEqual(team["members"][0]["name"], "队长同学")
 
-        unknown = self.member.post(f"/api/teams/{team['id']}/members", json={"email": "nobody@std.uestc.edu.cn"})
-        self.assertEqual(unknown.status_code, 404, unknown.get_json())
-        self.assertEqual(unknown.get_json()["error"], "no account uses this email")
+        # Members join themselves with the invite code; captains cannot add accounts by email.
+        self.assertEqual(self.member.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"}).status_code, 404)
 
-        forbidden_add = outsider.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"})
-        self.assertEqual(forbidden_add.status_code, 403, forbidden_add.get_json())
-        self.assertEqual(forbidden_add.get_json()["error"], "team captain required")
-
-        added = self.member.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"})
-        self.assertEqual(added.status_code, 201, added.get_json())
-        self.assertEqual({member["name"] for member in added.get_json()["members"]}, {"队长同学", "队友同学"})
-
-        duplicate = self.member.post(f"/api/teams/{team['id']}/members", json={"email": "teammate@std.uestc.edu.cn"})
-        self.assertEqual(duplicate.status_code, 409, duplicate.get_json())
-        self.assertEqual(duplicate.get_json()["error"], "team member already exists")
-
-        teammate_id = next(member["id"] for member in added.get_json()["members"] if member["name"] == "队友同学")
-        captain_id = added.get_json()["captain_id"]
+        joined = teammate.post("/api/teams/join", json={"invite_code": team["invite_code"]})
+        self.assertEqual(joined.status_code, 200, joined.get_json())
+        members = joined.get_json()["members"]
+        self.assertEqual(len(members), 2)
+        captain_id = joined.get_json()["captain_id"]
+        teammate_id = next(member["id"] for member in members if member["id"] != captain_id)
 
         self_removal = self.member.delete(f"/api/teams/{team['id']}/members/{captain_id}")
         self.assertEqual(self_removal.status_code, 400, self_removal.get_json())
