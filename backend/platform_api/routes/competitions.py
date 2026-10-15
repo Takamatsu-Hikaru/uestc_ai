@@ -48,6 +48,15 @@ def one_team_per_person_response():
     return jsonify({"error": "user already joined another team"}), 409
 
 
+# Staff accounts test across teams and tracks, so the participant rules below
+# never apply to them; ordinary members stay constrained.
+STAFF_ROLES = {"admin", "organizer", "editor", "reviewer"}
+
+
+def limits_exempt(user) -> bool:
+    return bool(user and user.role in STAFF_ROLES)
+
+
 @competitions_bp.get("/competitions")
 def list_competitions():
     status = request.args.get("status")
@@ -184,7 +193,7 @@ def create_team():
         return jsonify({"error": "competition is not open"}), 409
     if deadline_passed(competition.registration_closes_at):
         return registration_deadline_response()
-    if competing_team(competition.id, user.id):
+    if not limits_exempt(user) and competing_team(competition.id, user.id):
         return one_team_per_person_response()
     if Team.query.filter_by(competition_id=competition.id, name=data["name"]).first():
         return jsonify({"error": "team name already exists"}), 409
@@ -215,10 +224,11 @@ def join_team():
     if deadline_passed(team.competition.registration_closes_at):
         return registration_deadline_response()
     if not team_member(team.id, user.id):
-        if competing_team(team.competition_id, user.id):
+        exempt = limits_exempt(user)
+        if not exempt and competing_team(team.competition_id, user.id):
             return one_team_per_person_response()
         _, maximum = team_size_range(team.competition)
-        if maximum is not None and len(team.members) >= maximum:
+        if not exempt and maximum is not None and len(team.members) >= maximum:
             return jsonify({"error": "team is full"}), 409
         db.session.add(TeamMember(team=team, user=user))
         audit("team.joined", "team", team.id)
@@ -380,11 +390,12 @@ def register_team():
     existing = Registration.query.filter_by(competition_id=competition.id, track_id=track_id, team_id=team.id).first()
     if existing:
         return jsonify({"error": "team already registered"}), 409
+    exempt = limits_exempt(user)
     minimum, _ = team_size_range(competition)
-    if len(team.members) < minimum:
+    if not exempt and len(team.members) < minimum:
         return jsonify({"error": "team is below the minimum size"}), 409
     track_cap = max_tracks(competition)
-    if track_id and track_cap is not None:
+    if not exempt and track_id and track_cap is not None:
         registered_tracks = {row.track_id for row in
                              Registration.query.filter_by(competition_id=competition.id, team_id=team.id).all()}
         if len(registered_tracks - {track_id}) >= track_cap:

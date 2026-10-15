@@ -1226,6 +1226,49 @@ class PlatformApiTestCase(unittest.TestCase):
         self.assertEqual(self.member.post("/api/registrations", json={
             "competition_id": competition["id"], "track_id": track_two["id"], "team_id": team["id"]}).status_code, 201)
 
+    def test_staff_roles_are_exempt_from_participant_limits(self):
+        self.login(self.admin, "admin@uestcai.top")
+        created = self.admin.post("/api/competitions", json={
+            "slug": "staff-exempt-cup", "name": "Staff exempt", "summary": "Rules", "status": "published",
+            "config": {"team_size": {"min": 1, "max": 1}, "max_tracks": 1},
+        })
+        self.assertEqual(created.status_code, 201, created.get_json())
+        competition = created.get_json()
+        track_one = self.admin.post("/api/competitions/staff-exempt-cup/tracks",
+                                    json={"slug": "staff-track-one", "name": "One"}).get_json()
+        track_two = self.admin.post("/api/competitions/staff-exempt-cup/tracks",
+                                    json={"slug": "staff-track-two", "name": "Two"}).get_json()
+
+        self.register(self.member, "limits-member@std.uestc.edu.cn", "Limits member")
+        member_team = self.member.post("/api/teams", json={"competition_id": competition["id"], "name": "Member squad"})
+        self.assertEqual(member_team.status_code, 201, member_team.get_json())
+        member_team = member_team.get_json()
+
+        self.login(self.reviewer, "reviewer@uestc.ai")
+        first = self.reviewer.post("/api/teams", json={"competition_id": competition["id"], "name": "Reviewer squad"})
+        self.assertEqual(first.status_code, 201, first.get_json())
+        first = first.get_json()
+
+        # Staff bypass the one-team rule, the member cap and the track cap.
+        second = self.reviewer.post("/api/teams", json={"competition_id": competition["id"], "name": "Reviewer squad two"})
+        self.assertEqual(second.status_code, 201, second.get_json())
+        over_capacity = self.reviewer.post("/api/teams/join", json={"invite_code": member_team["invite_code"]})
+        self.assertEqual(over_capacity.status_code, 200, over_capacity.get_json())
+
+        for track in (track_one, track_two):
+            registered = self.reviewer.post("/api/registrations", json={
+                "competition_id": competition["id"], "track_id": track["id"], "team_id": first["id"]})
+            self.assertEqual(registered.status_code, 201, registered.get_json())
+
+        # An ordinary member is still capped.
+        blocked = self.member.post("/api/registrations", json={
+            "competition_id": competition["id"], "track_id": track_one["id"], "team_id": member_team["id"]})
+        self.assertEqual(blocked.status_code, 201, blocked.get_json())
+        blocked = self.member.post("/api/registrations", json={
+            "competition_id": competition["id"], "track_id": track_two["id"], "team_id": member_team["id"]})
+        self.assertEqual(blocked.status_code, 409, blocked.get_json())
+        self.assertEqual(blocked.get_json()["error"], "track limit reached")
+
     def test_invalid_team_rules_are_rejected(self):
         self.login(self.admin, "admin@uestcai.top")
         cases = [
