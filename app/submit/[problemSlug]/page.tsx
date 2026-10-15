@@ -5,7 +5,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Download, FileText, FileUp, LoaderCircle, LogIn, RotateCcw, Save, Send, TicketCheck, X } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
-import { MarkdownEditor } from "@/app/components/MarkdownEditor";
+import { LazyMarkdownEditor as MarkdownEditor } from "@/app/components/LazyMarkdownEditor";
 import { EvaluationTrials } from "@/app/components/EvaluationTrials";
 import { CheckpointProgress } from "@/app/components/CheckpointProgress";
 import { useSession } from "@/app/components/SessionProvider";

@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
 import io
 import json
 import sys
@@ -194,7 +196,8 @@ class ProblemSetupTests(unittest.TestCase):
         self.assertEqual(self.admin.put(self.url, json=self.document()).status_code, 200)
         self.assertEqual(self.member.put(self.url, json=self.document()).status_code, 200)
 
-    def test_minecraft_scene_validation_and_private_worker_delivery(self):
+    @patch("evaluation_docker_limits.node_memory_budget", return_value=8192)
+    def test_minecraft_scene_validation_and_private_worker_delivery(self, _memory_budget):
         self.prepare()
         self.app.config["EVALUATION_ENABLED_ADAPTERS"] = "minecraft-agent-v1"
         self.config.update(adapter="minecraft-agent-v1", task="open-world", metrics=["task_success"])
@@ -220,10 +223,12 @@ class ProblemSetupTests(unittest.TestCase):
 
 
 class WorkerBootstrapTests(unittest.TestCase):
+    @contextmanager
     def environment(self):
-        return patch.dict(os.environ, {"EVALUATION_API_BASE": "http://127.0.0.1:5000/api",
+        with TemporaryDirectory() as directory, patch("evaluation_worker.node_memory_budget", return_value=8192), patch.dict(os.environ, {"EVALUATION_API_BASE": "http://127.0.0.1:5000/api",
             "EVALUATION_WORKER_TOKEN": "test-token", "EVALUATION_IMAGES_JSON": "{}",
-            "EVALUATION_API_PROXY_URL": "", "EVALUATION_NETWORK": "", "EVALUATION_GPU_DEVICE": "", "EVALUATION_WORKER_ADAPTERS": ""})
+            "EVALUATION_API_PROXY_URL": "", "EVALUATION_NETWORK": "", "EVALUATION_GPU_DEVICE": "", "EVALUATION_WORKER_ADAPTERS": "", "EVALUATION_WORKER_LOCK_FILE": str(Path(directory) / "worker.lock")}):
+            yield
 
     def test_worker_adapter_filter_does_not_claim_unrelated_queued_jobs(self):
         with self.environment(), patch.dict(os.environ, {"EVALUATION_WORKER_ADAPTERS": "robot-arm-agent-v1"}), patch.object(sys, "argv", ["worker", "--once"]), patch("evaluation_worker.subprocess.run"), patch("evaluation_worker.request_json", side_effect=[{"adapters": ["classification-v1", "robot-arm-agent-v1"]}, None]) as api:

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Cpu, ExternalLink, FileCheck2, Gauge, Scale } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";

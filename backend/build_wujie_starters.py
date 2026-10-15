@@ -12,6 +12,7 @@ def build(output=None):
     output.mkdir(parents=True, exist_ok=True)
     classification = output / "wujie-classification-starter.zip"
     with zipfile.ZipFile(classification, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as archive:
+        archive.write(ROOT / "backend/build_classification_package.py", "build_classification_package.py")
         archive.write(ROOT / "backend/competitions/wujie-cup-2026/technical-route.md", "technical-route.md")
         for name in ("config.json", "inference.py", "network.py", "train.py", "predict.py"):
             archive.write(SOURCE / "classification_example" / name, name)

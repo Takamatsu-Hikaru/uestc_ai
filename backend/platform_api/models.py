@@ -431,7 +431,7 @@ class EvaluationRun(TimestampMixin, db.Model):
             "package_name": self.submission_snapshot.get("asset_name"),
             "package_sha256": self.submission_snapshot.get("package_sha256"),
             "metrics": self.metrics, "episodes": self.episodes, "error": self.error,
-              "artifacts": [artifact.to_dict() for artifact in self.artifacts],
+              "artifacts": [artifact.to_dict() for artifact in self.artifacts if not artifact.name.endswith('.log')],
             "performance": performance,
             "metric_definitions": self.config_snapshot.get("metric_definitions", []),
             "api_calls_used": self.api_calls_used,

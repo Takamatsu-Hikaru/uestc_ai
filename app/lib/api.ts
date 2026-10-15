@@ -1,3 +1,5 @@
+import { clearResourceCache } from "@/app/lib/resourceCache";
+
 const configuredBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 // The browser must use the public same-origin proxy in production. Keep the
 // absolute URL override for deployments that host the API separately.
@@ -16,6 +18,8 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const mutation = !["GET", "HEAD"].includes((init.method ?? "GET").toUpperCase());
+  if (mutation) clearResourceCache();
   const headers = new Headers(init.headers);
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -27,6 +31,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
   const isJson = response.headers.get("content-type")?.includes("application/json");
   const body = isJson ? await response.json() : await response.text();
+  if (mutation) clearResourceCache();
   if (!response.ok) {
     const message = typeof body === "object" && body && "error" in body
       ? String((body as { error: unknown }).error)
@@ -84,6 +89,15 @@ export function formatApiError(error: unknown): string {
       "email delivery is not configured": "邮件服务尚未配置，请联系管理员。",
       "email provider rejected the request": "邮件服务拒绝了发送请求，请联系管理员检查发件域名。",
       "email provider is unavailable": "邮件服务暂时不可用，请稍后重试。",
+      "email provider is not supported": "不支持的邮件通道，请选择 Resend 或 SMTP。",
+      "invalid sender address": "发件人必须是有效的邮箱地址，可写成“名称 <地址>”。",
+      "invalid smtp host": "请填写有效的 SMTP 服务器地址。",
+      "invalid smtp port": "SMTP 端口必须在 1 到 65535 之间。",
+      "invalid smtp security": "请选择 SSL 或 STARTTLS 加密方式。",
+      "invalid smtp username": "SMTP 用户名过长或包含非法字符。",
+      "email settings are invalid": "邮件配置不完整或包含非法字符。",
+      "email settings cannot be decrypted": "已保存的邮件配置无法解密，请重新保存密钥。",
+      "mail encryption key is not configured": "服务器未配置邮件加密密钥，无法保存密钥，请联系运维。",
       "invite expiry must be between 1 and 365 days": "邀请码有效期必须为 1 到 365 天。",
       "invite note is too long": "邀请码备注不能超过 160 个字符。",
       "used registration invite cannot be revoked": "该邀请码已经使用，不能撤销。",

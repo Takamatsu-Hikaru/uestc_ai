@@ -18,6 +18,7 @@ from .routes.submissions import submissions_bp
 from .routes.evaluations import evaluations_bp
 from .routes.evaluation_trials import evaluation_trials_bp
 from .routes.ai import ai_bp
+from .routes.mail import mail_bp
 from .routes.compute import compute_bp
 from .routes.compute_accounts import compute_accounts_bp
 from .routes.problem_setup import setup_bp
@@ -96,6 +97,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         EVALUATION_API_KEY=os.environ.get("EVALUATION_API_KEY", ""),
         EVALUATION_API_ORIGIN_IP=os.environ.get("EVALUATION_API_ORIGIN_IP", ""),
         AI_GATEWAY_ENCRYPTION_KEY=os.environ.get("AI_GATEWAY_ENCRYPTION_KEY", ""),
+        MAIL_ENCRYPTION_KEY=os.environ.get("MAIL_ENCRYPTION_KEY")
+        or os.environ.get("AI_GATEWAY_ENCRYPTION_KEY", ""),
         AI_GATEWAY_ALLOW_LOCAL_HTTP=os.environ.get("AI_GATEWAY_ALLOW_LOCAL_HTTP", "0") == "1",
         AI_GATEWAY_TIMEOUT_SECONDS=120,
         AI_GATEWAY_MAX_REQUEST_BYTES=4 * 1024 * 1024,
@@ -153,6 +156,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(evaluations_bp, url_prefix="/api")
     app.register_blueprint(evaluation_trials_bp, url_prefix="/api")
     app.register_blueprint(ai_bp, url_prefix="/api")
+    app.register_blueprint(mail_bp, url_prefix="/api")
     app.register_blueprint(compute_bp, url_prefix="/api")
     app.register_blueprint(compute_accounts_bp, url_prefix="/api")
     app.register_blueprint(setup_bp, url_prefix="/api")

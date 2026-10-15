@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
 import { ArrowRight, CalendarDays, Layers3 } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";

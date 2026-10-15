@@ -233,6 +233,8 @@ def claim_run():
             "runtime": deepcopy(run.runtime_snapshot),
             "submission": deepcopy(run.submission_snapshot),
             "asset_url": f"/api/evaluation-worker/runs/{run.id}/asset",
+            "logs_url": f"/api/evaluation-worker/runs/{run.id}/logs",
+            "attempt": run.attempts,
         })
     return "", 204
 

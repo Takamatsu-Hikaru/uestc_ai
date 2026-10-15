@@ -123,6 +123,8 @@ python -m pip install -r backend/requirements-test.txt
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
+全站方法与路由覆盖审计、隔离运行方法及验收边界见 [API 测试说明](docs/api-testing.md) 和 [逐接口覆盖结果](docs/api-coverage.md)。
+
 持续集成会在 Pull request 和 `main` 分支推送时运行相同检查。
 
 ## 项目结构

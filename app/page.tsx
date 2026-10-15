@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ArrowRight, BookOpen, CalendarDays, Code2 } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";
 import { RevealSection } from "@/app/components/RevealSection";
 import { ScrollFilmIntro } from "@/app/components/ScrollFilmIntro";
 import { ArticleVisual, TrackVisual } from "@/app/components/ClubVisuals";
 import { EmptyState, PageError, PageLoading, StatusPill } from "@/app/components/ui";
-import { api, formatApiError } from "@/app/lib/api";
+import { useApiResource } from "@/app/lib/useApiResource";
 import type { Competition, ContentItem, Track } from "@/app/lib/domain";
 import { formatBeijing } from "@/app/lib/time";
 
@@ -39,40 +39,16 @@ function UpdatesFallback({ error, retry }: { error: string; retry: () => void })
   </div>;
 }
 export default function Home() {
-  const [competition, setCompetition] = useState<Competition | null>(null);
-  const [articles, setArticles] = useState<ContentItem[]>([]);
-  const [articleError, setArticleError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: competitions, loading: listLoading, error: listError, reload: reloadList } = useApiResource<Competition[]>("/competitions?status=published");
+  const featured = competitions?.[0];
+  const { data: competition, loading: detailLoading, error: detailError, reload: reloadDetail } = useApiResource<Competition>(featured ? `/competitions/${featured.slug}` : null);
+  const { data: content, loading: articlesLoading, error: articleError, reload: reloadContent } = useApiResource<ContentItem[]>("/content");
+  const articles = useMemo(() => (content ?? []).filter((item) => item.kind !== "work").slice(0, homeUpdatesLimit), [content]);
+  const loading = listLoading || detailLoading;
+  const error = listError || detailError;
   const updatesShowcaseRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    setArticleError("");
-    try {
-      const competitions = await api<Competition[]>("/competitions?status=published");
-      const featured = competitions[0] ?? null;
-      const [detailResult, contentResult] = await Promise.allSettled([
-        featured ? api<Competition>(`/competitions/${featured.slug}`) : Promise.resolve(null),
-        api<ContentItem[]>("/content"),
-      ]);
-      if (detailResult.status === "fulfilled") setCompetition(detailResult.value);
-      else setError(formatApiError(detailResult.reason));
-      if (contentResult.status === "fulfilled") setArticles(contentResult.value.filter((item) => item.kind !== "work").slice(0, homeUpdatesLimit));
-      else setArticleError(formatApiError(contentResult.reason));
-    } catch (requestError) {
-      setError(formatApiError(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    Promise.resolve().then(() => { if (active) return load(); });
-    return () => { active = false; };
-  }, [load]);
+  const load = useCallback(() => Promise.all([reloadList(), reloadDetail(), reloadContent()]), [reloadList, reloadDetail, reloadContent]);
 
   useEffect(() => {
     const showcase = updatesShowcaseRef.current;
@@ -126,7 +102,7 @@ export default function Home() {
           <div><span className="eyebrow"><i />LATEST</span><h2>最新动态</h2></div>
           <Link href="/news">全部动态 <ArrowRight size={15} /></Link>
         </header>
-        {loading ? <PageLoading label="正在读取动态" /> : articles.length ? <div className="news-cards news-showcase" ref={updatesShowcaseRef}>
+        {articlesLoading ? <PageLoading label="正在读取动态" /> : articles.length ? <div className="news-cards news-showcase" ref={updatesShowcaseRef}>
           <div className="updates-featured-rail">
             <Link data-reveal-item className="update-card update-featured" data-kind={articles[0].kind} href={`/news/${articles[0].slug}`}>
               <div className="update-visual update-featured-visual"><ArticleVisual title={articles[0].title} slug={articles[0].slug} /></div>

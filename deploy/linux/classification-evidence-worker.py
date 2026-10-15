@@ -19,6 +19,7 @@ import classification_worker as worker
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from evaluation_evidence import publish_classification
 from evaluation_transport import install_origin_route
+from evaluation_logs import RunLogs, capture_inference_logs
 
 install_origin_route()
 
@@ -52,10 +53,14 @@ execute = worker.execute
 def with_evidence(base, job, **kwargs):
     global infrastructure_before_execution
     infrastructure_before_execution = False
-    result = execute(base, job, **kwargs)
-    if result["status"] == "completed":
-        publish_classification(base, job, kwargs["log_root"])
-    return result
+    directory = Path(kwargs['log_root']) / job['id']
+    with RunLogs(base, job, str(directory)) as logs:
+        with capture_inference_logs(logs, directory):
+            result = execute(base, job, **kwargs)
+        if result["status"] == "completed":
+            publish_classification(base, job, kwargs["log_root"])
+        logs.event('分类推理结果：' + result['status'])
+        return result
 
 
 worker.execute = with_evidence

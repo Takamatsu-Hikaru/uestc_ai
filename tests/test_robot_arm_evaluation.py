@@ -71,7 +71,8 @@ class RobotArmTests(unittest.TestCase):
         v.update([.12, .1, .82], [.1, .1, .825], False, False, False)
         self.assertEqual(v.drops, 1)
 
-    def test_worker_routes_robot_to_two_containers_with_private_scenes(self):
+    @patch("evaluation_docker_limits.node_memory_budget", return_value=8192)
+    def test_worker_routes_robot_to_two_containers_with_private_scenes(self, _memory_budget):
         from evaluation_worker import execute
         config = {"adapter": "robot-arm-agent-v1", "task": "multi-step", "resources": {"gpu": False, "memory_mb": 2048}}
         job = {"config": config, "runtime": {"image": "sha256:" + "a" * 64,

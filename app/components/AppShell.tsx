@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {

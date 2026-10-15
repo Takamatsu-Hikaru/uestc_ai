@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink as Link } from "@/app/components/PrefetchLink";
 import { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
 import { AppShell } from "@/app/components/AppShell";

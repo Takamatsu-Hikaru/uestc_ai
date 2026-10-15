@@ -376,3 +376,33 @@ export type UserDeletionImpact = {
   recommendation: string;
   counts: Record<string, number>;
 };
+
+export type MailTestResult = {
+  recipient: string;
+  sender: string;
+  provider: string;
+  fallback_used: boolean;
+  ok: boolean;
+  reason: string;
+  detail: string;
+  elapsed_ms: number;
+  at: string;
+};
+
+export type MailSettings = {
+  source: "database" | "environment" | "none";
+  provider: "resend" | "smtp";
+  sender: string;
+  fallback: boolean;
+  resend: { secret_saved: boolean; configured: boolean };
+  smtp: {
+    secret_saved: boolean;
+    configured: boolean;
+    host: string;
+    port: number | null;
+    security: "ssl" | "starttls" | "";
+    username: string;
+  };
+  updated_at: string | null;
+  last_test: MailTestResult | null;
+};

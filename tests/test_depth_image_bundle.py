@@ -73,7 +73,7 @@ class DepthImageBundleTests(unittest.TestCase):
             weights.write_bytes(b"checkpoint bytes")
             output = root / "submission.zip"
             with patch.object(build_classification_package, "__file__", str(root / "backend/build_classification_package.py")), \
-                 patch.object(sys, "argv", ["package", "--weights", str(weights), "--output", str(output)]), \
+                 patch.object(sys, "argv", ["package", "--project", str(root / "backend/evaluation_adapters/classification_example"), "--weights", str(weights), "--output", str(output)]), \
                  contextlib.redirect_stdout(io.StringIO()):
                 build_classification_package.main()
             with zipfile.ZipFile(output) as archive:

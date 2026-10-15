@@ -502,7 +502,10 @@ class PlatformApiTestCase(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "finite"):
             summarize_episode({**scene, "positions": [[float("nan"), 0, 0]]})
 
-    def test_worker_only_runs_pinned_adapter_with_isolated_network(self):
+    @patch("evaluation_docker_limits.node_memory_budget", return_value=8192)
+    def test_worker_only_runs_pinned_adapter_with_isolated_network(self, _memory_budget):
+        # Docker is mocked here; physical host capacity is tested separately in
+        # test_docker_memory_limits.py, not inherited from the API test runner.
         import evaluation_worker
 
         job = {

@@ -4,32 +4,47 @@
 
 解释器：`/opt/uestc-classification/runtime/bin/python`。环境为Python3.12.3、PyTorch2.8.0+cu128、torchvision0.23.0+cu128、NumPy2.3.2、Pillow10.4.0、safetensors0.5.3。
 
-## 开始训练
+## 开发目录
+
+从官网题目页下载最新开发包 `wujie-classification-starter.zip`，上传到训练实例的 `/root/autodl-tmp`，执行：
 
 ```bash
-/opt/uestc-classification/runtime/bin/python \
-  /opt/uestc-classification/starter/train.py \
-  --training-data /opt/uestc-classification/training-data/train \
-  --validation-data /opt/uestc-classification/training-data/validation \
-  --epochs 10 --batch-size 8 --output /root/autodl-tmp/model.safetensors
-
-/opt/uestc-classification/runtime/bin/python \
-  /opt/uestc-classification/backend/build_classification_package.py \
-  --weights /root/autodl-tmp/model.safetensors \
-  --output /root/autodl-tmp/submission.zip
+mkdir -p /root/autodl-tmp/my-model
+/opt/uestc-classification/runtime/bin/python -m zipfile -e \
+  /root/autodl-tmp/wujie-classification-starter.zip /root/autodl-tmp/my-model
+cd /root/autodl-tmp/my-model
 ```
 
-训练时逐轮显示耗时、损失和验证准确率。示例是轻量基线，选手可替换模型。`submission.zip`包含推理代码、配置和权重；训练代码与README技术路线按题目要求提交，研究PDF可选。
+在此目录修改 `network.py`、`train.py` 和 `inference.py`，新增模块可放入子目录。训练、预测和打包均使用此份工程。
 
-批量预测请下载最新开发包，在包含config.json、inference.py、network.py、predict.py与model.safetensors的目录运行：
+## 训练与验证
 
 ```bash
+/opt/uestc-classification/runtime/bin/python train.py \
+  --training-data /opt/uestc-classification/training-data/train \
+  --validation-data /opt/uestc-classification/training-data/validation \
+  --epochs 10 --batch-size 8 --output model.safetensors
+
 /opt/uestc-classification/runtime/bin/python predict.py \
   --dataset /opt/uestc-classification/training-data/validation \
   --output predictions.csv
 ```
 
-生成CSV两列 `sample_id,predicted_class`，类别编号0–39。predict.py在最新开发包中提供；已保存的v4镜像不需要重建或重新下载数据。
+训练逐轮显示耗时、损失和验证准确率。`predictions.csv` 的两列为 `sample_id,predicted_class`，类别编号为 0–39。模型结构、预处理与推理代码需保持一致。
+
+## 作品打包
+
+```bash
+/opt/uestc-classification/runtime/bin/python build_classification_package.py \
+  --project . --weights model.safetensors \
+  --output /root/autodl-tmp/submission.zip
+```
+
+打包器读取 `--project` 中的配置、推理入口和 Python 模块，将训练权重保存为 `config.json` 的 `weights_file` 指定文件。附加词表、归一化参数等文件使用 `--include assets/normalization.json`，可重复指定。输出清单记录每个文件的 SHA-256，便于核对测试版本。
+
+将 `submission.zip` 上传官网进行自测；正式提交补充训练代码、验证集预测 CSV 和技术路线说明。研究 PDF 可选。单个 ZIP 上限 20 MB，解压后上限 64 MB；较大权重使用题目说明中的 HTTPS 地址与 SHA-256 配置。
+
+训练实例的数据和环境可以继续使用，开发包中的打包器替代旧镜像内的同名工具。
 
 ## 数据与预测接口
 

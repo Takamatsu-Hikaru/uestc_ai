@@ -15,7 +15,7 @@
 
 ZIP 根目录必须有 `inference.py`、`config.json`，不在线安装选手依赖。`Model(config, device)` 实现 `predict(sample_path)`，返回 **40 个有限 Python 数值**。深度输入为非 RGB NPY，布局 **[T,1,H,W]**，禁止 pickle；原始数据由组织方提前转换，这不是 CUHK-X 原文件格式。输出索引对应组织方发布的 40 类有序映射。
 
-小权重放在 ZIP 中，配置 `num_classes:40`、`weights_file:"model.safetensors"`。附件限 20 MB、解压限 64 MB/256 文件。本仓库 `classification_example` 提供 3D-CNN 训练/推理示例，必须先训练；`build_classification_package.py` 打包训练后的 safetensors 权重。
+小权重放在 ZIP 中，配置 `num_classes:40`、`weights_file:"model.safetensors"`。附件限 20 MB、解压限 64 MB/256 文件。本仓库 `classification_example` 提供 3D-CNN 训练/推理示例，必须先训练；`build_classification_package.py --project <实际工程目录> --weights <权重文件> --output <提交ZIP>` 打包工程中的 Python 模块、配置和训练权重。开发包内附新版打包器，附加运行资源用 `--include <相对路径>` 指定。
 
 大权重采用下列配置，可信下载器核验大小和 SHA256，最多 2 GiB，下载计入总时限。每次重定向都核验 `EVALUATION_MODEL_HOSTS` 白名单、公网 DNS 和 TLS，连接固定到已核验 IP。提交表中的模型链接供评委查阅；实际执行权重由冻结 ZIP 配置及摘要决定。
 

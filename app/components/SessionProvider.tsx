@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/app/lib/api";
+import { clearResourceCache } from "@/app/lib/resourceCache";
 import type { User } from "@/app/lib/domain";
 
 type SessionContextValue = {
@@ -20,9 +21,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const result = await api<{ user: User }>("/auth/me");
+      clearResourceCache();
       setUser(result.user);
-    } catch {
+    } catch (error) {
+      clearResourceCache();
       setUser(null);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -32,6 +36,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     try {
       await api("/auth/logout", { method: "POST" });
     } finally {
+      clearResourceCache();
       setUser(null);
     }
   }, []);

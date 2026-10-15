@@ -82,6 +82,8 @@ def overview():
     usage = AIUsage.query.filter(AIUsage.grant_id.in_(ids))
     count = usage.count()
     completed = usage.filter_by(status="completed").count()
+    token_totals = dict(db.session.query(AIUsage.status, func.sum(AIUsage.charged_tokens)).filter(
+        AIUsage.grant_id.in_(ids)).group_by(AIUsage.status).all())
     measured = db.session.query(func.coalesce(func.sum(AIUsage.input_tokens), 0),
         func.coalesce(func.sum(AIUsage.output_tokens), 0), func.avg(AIUsage.latency_ms)).filter(AIUsage.grant_id.in_(ids)).one()
     daily = db.session.query(func.date(AIUsage.created_at), func.count(AIUsage.id), func.sum(AIUsage.charged_tokens)).filter(
@@ -91,6 +93,9 @@ def overview():
         "models": model_catalog([g for g in grants if g.enabled]),
         "summary": {"requests": count, "completed": completed, "input_tokens": measured[0], "output_tokens": measured[1],
             "charged_tokens": sum(g.tokens_used for g in grants), "cost_micros": sum(g.cost_used_micros for g in grants),
+            "confirmed_tokens": sum(token_totals.get(status, 0) or 0 for status in ("completed", "failed")),
+            "pending_tokens": token_totals.get("pending", 0) or 0,
+            "uncertain_tokens": token_totals.get("uncertain", 0) or 0,
             "average_latency_ms": round(measured[2] or 0), "uncertain": usage.filter_by(status="uncertain").count(),
             "pending": usage.filter_by(status="pending").count()},
         "daily": [{"date": str(date), "requests": calls, "tokens": tokens} for date, calls, tokens in reversed(daily)]})

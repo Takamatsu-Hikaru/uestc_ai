@@ -18,7 +18,8 @@ export type AIModel = { id: string; protocols: string[]; input_price: number; ou
 export type AIOverview = {
   grants: AIGrant[]; key_grant_ids: string[]; models: AIModel[];
   summary: { requests: number; completed: number; input_tokens: number; output_tokens: number;
-    charged_tokens: number; cost_micros: number; average_latency_ms: number; uncertain: number; pending: number };
+    charged_tokens: number; confirmed_tokens?: number; pending_tokens?: number; uncertain_tokens?: number;
+    cost_micros: number; average_latency_ms: number; uncertain: number; pending: number };
   daily: { date: string; requests: number; tokens: number }[];
 };
 export type AIUsage = {

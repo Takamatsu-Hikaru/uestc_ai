@@ -79,7 +79,8 @@ def start_team_trial(problem_id):
         checks = readiness(problem)
         blocked = [item for item in checks["checks"] if item["state"] == "blocked"]
         if blocked:
-            return jsonify({"error": "本题尚未完成开赛验收，本次不会扣除测试次数。", "checks": blocked}), 409
+            labels = "、".join(dict.fromkeys(item["label"] for item in blocked))
+            return jsonify({"error": f"测评暂未开放，组织方待完成：{labels}。本次不扣次数。", "checks": blocked}), 409
     if config["adapter"] in {"robot-arm-agent-v1", "libero-agent-v1"} and not problem.runtime:
         return jsonify({"error": "组织方尚未配置机械臂仿真环境与私有场景，请稍后测试。"}), 409
     if config["adapter"] == "classification-v1" and config["resources"]["gpu"] and not problem.runtime:

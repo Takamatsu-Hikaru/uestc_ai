@@ -55,6 +55,10 @@ next-env.d.ts
 /deploy*.zip
 /site-archive*.tar.gz
 
+# local scratch: mirrored deployed source and eval image fetching
+/.server-source/
+/.eval-fetch/
+
 # Flask runtime data
 /backend/data/
 /backend/uploads/

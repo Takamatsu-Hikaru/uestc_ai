@@ -1,40 +1,54 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, formatApiError } from "@/app/lib/api";
+import { fetchResource, peekResource } from "@/app/lib/resourceCache";
+
+type ResourceState<T> = { path: string | null; data: T | null; loading: boolean; error: string };
 
 export function useApiResource<T>(path: string | null) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(Boolean(path));
-  const [error, setError] = useState("");
+  const [state, setState] = useState<ResourceState<T>>(() => ({
+    path, data: peekResource<T>(path), loading: Boolean(path && peekResource<T>(path) === null), error: "",
+  }));
+  const requestId = useRef(0);
 
   const reload = useCallback(async () => {
     if (!path) return;
-    setLoading(true);
-    setError("");
+    const id = ++requestId.current;
+    setState((previous) => ({ path, data: previous.path === path ? previous.data : peekResource<T>(path),
+      loading: !(previous.path === path && previous.data !== null), error: "" }));
     try {
-      setData(await api<T>(path));
+      const data = await fetchResource(path, () => api<T>(path), true);
+      if (requestId.current === id) setState({ path, data, loading: false, error: "" });
     } catch (requestError) {
-      setError(formatApiError(requestError));
-    } finally {
-      setLoading(false);
+      if (requestId.current === id) setState((previous) => ({ ...previous, loading: false, error: formatApiError(requestError) }));
     }
   }, [path]);
 
   useEffect(() => {
-    if (!path) return;
+    const id = ++requestId.current;
     let active = true;
-    Promise.resolve().then(() => {
+    Promise.resolve().then(async () => {
       if (!active) return;
-      setLoading(true);
-      setError("");
-      return api<T>(path)
-        .then((result) => { if (active) setData(result); })
-        .catch((requestError) => { if (active) setError(formatApiError(requestError)); })
-        .finally(() => { if (active) setLoading(false); });
+      const cached = peekResource<T>(path);
+      setState({ path, data: cached, loading: Boolean(path && cached === null), error: "" });
+      if (!path) return;
+      try {
+        const data = await fetchResource(path, () => api<T>(path));
+        if (active && requestId.current === id) setState({ path, data, loading: false, error: "" });
+      } catch (error) {
+        if (active && requestId.current === id) setState((previous) => ({ ...previous, loading: false, error: formatApiError(error) }));
+      }
     });
-    return () => { active = false; };
+    return () => { active = false; requestId.current += 1; };
   }, [path]);
 
-  return { data, loading, error, reload, setData };
+  const setData = useCallback((value: T | null | ((previous: T | null) => T | null)) => {
+    setState((previous) => ({ ...previous, path, data: typeof value === "function"
+      ? (value as (previous: T | null) => T | null)(previous.data) : value }));
+  }, [path]);
+  const current = state.path === path ? state : {
+    path, data: peekResource<T>(path), loading: Boolean(path && peekResource<T>(path) === null), error: "",
+  };
+  return { data: current.data, loading: current.loading, error: current.error, reload, setData };
 }

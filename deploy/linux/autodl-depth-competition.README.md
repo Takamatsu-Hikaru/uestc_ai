@@ -56,8 +56,11 @@ done
 
 /opt/uestc-classification/runtime/bin/python \
   /opt/uestc-classification/backend/build_classification_package.py \
+  --project /opt/uestc-classification/starter \
   --weights /root/model.safetensors --output /root/submission.zip
 ```
+
+上例打包镜像中的原始示例。学生修改模型后，应将 `--project` 指向实际训练和推理工程；新版开发包自带此工具，旧镜像继续使用现有数据与环境即可。
 
 上述命令适用于内置数据的选手镜像；薄镜像自行转换后改用实际输出路径。训练示例会逐轮显示耗时、损失和验证集准确率，有GPU时使用CUDA。初始示例不附带训练权重。正式提交的 `Model(config, device).predict(sample_path)` 返回40个有限数值，索引顺序与镜像内类别映射一致；不得在预测代码中读取测试标签或自报比赛分数。
 

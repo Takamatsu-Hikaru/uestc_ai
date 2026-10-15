@@ -10,11 +10,12 @@ import hashlib
 import json
 import math
 import random
+import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_CEILING
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -28,13 +29,43 @@ from .security import hash_token
 
 
 class GatewayError(Exception):
-    def __init__(self, message: str, status: int = 400, code: str = "invalid_request"):
+    def __init__(self, message: str, status: int = 400, code: str = "invalid_request", retry_after=None):
         super().__init__(message)
         self.status, self.code = status, code
+        self.retry_after = retry_after
 
 
 def error_response(error: GatewayError):
-    return jsonify({"error": {"message": str(error), "type": error.code, "code": error.code}}), error.status
+    response = jsonify({"error": {"message": str(error), "type": error.code, "code": error.code}})
+    if error.retry_after is not None:
+        response.headers['Retry-After'] = str(error.retry_after)
+    return response, error.status
+
+
+def rejection_metadata(error):
+    """Keep bounded, recognized diagnostics; provider bodies and credentials stay private."""
+    result = {}
+    retry = error.headers.get('Retry-After') if error.headers else None
+    if retry and retry.isdigit() and 0 <= int(retry) <= 86400:
+        result['retry_after_seconds'] = int(retry)
+    if error.code != 429:
+        return result
+    try:
+        data = json.loads(error.read(8193))
+        message = data.get('error', {}).get('message', '') if isinstance(data, dict) else ''
+        if not isinstance(message, str) or len(message) > 8192:
+            return result
+        if 'usage limit for your plan' in message.lower() and 'limit resets at' in message.lower():
+            result['provider_error'] = 'usage_window_exhausted'
+            match = re.search(r'limit resets at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)', message, re.I)
+            if match:
+                reset = datetime.fromisoformat(match[1].replace('Z', '+00:00'))
+                wait = math.ceil((reset - datetime.now(timezone.utc)).total_seconds())
+                if 0 < wait <= 86400:
+                    result.update(retry_at=reset.isoformat(), retry_after_seconds=wait)
+    except (ValueError, AttributeError, OSError):
+        pass
+    return result
 
 
 def cipher() -> Fernet:
@@ -311,6 +342,7 @@ def proxy(grant: AIGrant, body, endpoint: str = "chat/completions", key: AIKey |
     usage = reserve(grant, key, run, model, endpoint, inp + out, reservation_cost)
     usage_id, started, attempts = usage.id, time.monotonic(), []
     response = channel = None
+    rejection_settled = False
     convert = False
     deadline = started + current_app.config["AI_GATEWAY_TIMEOUT_SECONDS"]
     try:
@@ -321,7 +353,7 @@ def proxy(grant: AIGrant, body, endpoint: str = "chat/completions", key: AIKey |
                 attempts.append({"channel_id": channel.id, "status": response.status})
                 break
             except urllib.error.HTTPError as error:
-                attempts.append({"channel_id": channel.id, "status": error.code})
+                attempts.append({"channel_id": channel.id, "status": error.code, **rejection_metadata(error)})
                 error.close()
                 # Only explicit rejection is safe to retry without double spending.
                 if error.code not in {401, 403, 404, 429}:
@@ -329,12 +361,25 @@ def proxy(grant: AIGrant, body, endpoint: str = "chat/completions", key: AIKey |
                 if time.monotonic() >= deadline:
                     break
         if response is None:
+            windows = [a for a in attempts if a.get('provider_error') == 'usage_window_exhausted']
+            code = 'upstream_usage_window' if windows else 'upstream_rejected'
             settle(usage_id, channel.id if channel else None, "failed", (0, 0, 0),
-                   int((time.monotonic() - started) * 1000), None, attempts, "upstream_rejected")
-            raise GatewayError("所有渠道均拒绝请求，请稍后重试。", 503, "upstream_rejected")
+                   int((time.monotonic() - started) * 1000), None, attempts, code)
+            rejection_settled = True
+            if windows:
+                retry = min((a['retry_after_seconds'] for a in windows if 'retry_after_seconds' in a), default=None)
+                reset = min((a['retry_at'] for a in windows if 'retry_at' in a), default=None)
+                message = '上游模型服务的用量窗口已耗尽，请等待窗口重置后重试。'
+                if reset:
+                    local = datetime.fromisoformat(reset).astimezone(timezone(timedelta(hours=8)))
+                    message = f'上游模型服务的用量窗口已耗尽，预计北京时间{local:%m月%d日 %H:%M:%S}重置。'
+                raise GatewayError(message, 503, code, retry_after=retry)
+            retry = min((a['retry_after_seconds'] for a in attempts if 'retry_after_seconds' in a), default=None)
+            raise GatewayError("所有渠道均拒绝请求，请稍后重试。", 503, code, retry_after=retry)
     except (urllib.error.URLError, TimeoutError, OSError, GatewayError) as error:
-        settle(usage_id, channel.id if channel else None, "uncertain", None,
-               int((time.monotonic() - started) * 1000), None, attempts, "upstream_unavailable")
+        if not rejection_settled:
+            settle(usage_id, channel.id if channel else None, "uncertain", None,
+                   int((time.monotonic() - started) * 1000), None, attempts, "upstream_unavailable")
         if isinstance(error, GatewayError):
             raise
         raise GatewayError("上游服务暂不可用，请稍后重试。", 502, "upstream_unavailable") from None

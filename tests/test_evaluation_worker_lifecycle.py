@@ -11,7 +11,8 @@ import evaluation_worker as worker
 
 
 class WorkerLifecycleTests(unittest.TestCase):
-    def test_shutdown_removes_active_container_and_propagates_exit(self):
+    @patch("evaluation_docker_limits.node_memory_budget", return_value=8192)
+    def test_shutdown_removes_active_container_and_propagates_exit(self, _memory_budget):
         job = {'id': 'shutdown-run', 'lease_token': 'private-lease', 'asset_url': '/asset.zip',
                'config': {'adapter': 'classification-v1', 'resources': {'cpus': 1, 'memory_mb': 512,
                           'gpu': False, 'time_seconds': 60}, 'api': {'enabled': False}}}
@@ -39,7 +40,8 @@ class WorkerLifecycleTests(unittest.TestCase):
             worker.cleanup_worker_containers('worker-a')
         self.assertEqual(containers, {'other': 'worker-b'})
 
-    def test_installed_adapters_report_online_before_first_problem_import(self):
+    @patch("evaluation_worker.node_memory_budget", return_value=8192)
+    def test_installed_adapters_report_online_before_first_problem_import(self, _memory_budget):
         claimed = []
         def api(base, path, method='GET', body=None, headers=None):
             if path.endswith('runtime-catalog'):

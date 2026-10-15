@@ -170,3 +170,30 @@
 .evaluation-evidence h4 { flex-basis: 100%; }
 .checkpoint-review-list { display: grid; gap: 24px; margin-top: 24px; }
 @media (max-width: 640px) { .checkpoint-form { padding: 18px; } .checkpoint-tabs button { flex: 1 1 100%; text-align: left; } }
+
+/* Keep the registration layout while a request locks its controls. */
+.auth-fields { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 18px; }
+
+.evaluation-timing { min-width: 0; padding: 14px 16px; background: var(--paper-2); }
+.evaluation-timing .evaluation-timing-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 14px 20px; margin: 0; }
+.evaluation-timing-summary > div { min-width: 0; }
+.evaluation-timing .evaluation-timing-summary dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 7px; color: var(--quiet); font-size: 12px; }
+.evaluation-timing-summary dt span { font-size: 11px; font-weight: normal; }
+.evaluation-timing .evaluation-timing-summary dd { margin: 6px 0 0; color: var(--ink); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.evaluation-timing-dates { display: flex; flex-wrap: wrap; gap: 7px 18px; margin-top: 12px; color: var(--quiet); font-size: 12px; }
+.evaluation-timing-dates > span { min-width: 0; overflow-wrap: anywhere; }
+.evaluation-timing-dates time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.evaluation-timing .evaluation-timing-note { margin: 10px 0 0; color: var(--quiet); font-size: 12px; line-height: 1.6; }
+.evaluation-results > .evaluation-timing { margin-bottom: 16px; }
+.trial-history > article > .evaluation-timing { margin: 0 16px 16px; }
+
+.evaluation-log-panel { min-width: 0; border-top: 1px solid var(--line); }
+.evaluation-log-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 16px; background: transparent; border: 0; color: var(--ink); text-align: left; cursor: pointer; font-size: 14px; font-weight: 600; }
+.evaluation-log-toggle span { font-size: 12px; font-weight: normal; color: var(--muted); }
+.evaluation-log-body { min-width: 0; padding: 0 16px 16px; }
+.evaluation-log-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 4px 0 12px; font-size: 12px; }
+.evaluation-log-tools label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.evaluation-log-tools select { max-width: 100%; min-height: 34px; padding: 5px 8px; font-size: 12px; }
+.evaluation-log-tools .text-button { display: inline-flex; align-items: center; gap: 5px; padding: 0; font-size: 12px; }
+.evaluation-log-body pre { margin: 0 0 10px; padding: 14px; min-height: 100px; max-height: 420px; max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #202822; color: #e3ece1; font-size: 12px; line-height: 1.65; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.evaluation-log-body > small { color: var(--muted); font-size: 12px; }
