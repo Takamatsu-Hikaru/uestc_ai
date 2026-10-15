@@ -12,6 +12,10 @@
 
 真实容器超时验收：`python backend/docker_minecraft_test.py --time-limit 30 --expect-timeout`。脚本使用独立数据库和慢智能体，验证 MC 控制器/参赛容器按总预算终止、清理带本次任务标签的容器、保存超时失败、额度扣至零并拒绝下一次正式提交。2026-10-05 本机通过；30 秒运行限制加容器清理共约 32 秒。该验收验证超时与次数控制，不代替完整任务指标验收。完整指标链路继续使用不带 `--expect-timeout` 的既有验收命令。
 
+2026-10-14 在专用 Docker 节点复核：MC 模块加载卡死用例设置30秒预算，30.79秒内完成终止、容器清理和失败回写；LIBERO同类用例为30.89秒。两者均验证只扣一次机会、队伍可见失败、旧模型代理令牌及租约返回403、下一个队伍可以领取。通用入口 `backend/docker_agent_smoke_test.py --adapter minecraft --controller-image <固定镜像> --agent-image <固定镜像> --output <新目录> --time-limit 30 --timeout-phase import`，`--timeout-phase reset/act`须给足环境初始化时间，并核对日志确实进入该阶段，否则验收失败，不能声称验证了决策卡死。
+
+计时口径：排队与程序包下载不计入运行预算；环境启动、选手代码以及全部场景共用一次单调时钟截止时间。证据上传、容器清理和结果回写属于运行后的收尾，因此网页显示的创建至完成时间不能直接与运行预算比较。每次任务使用冻结的`config_snapshot.resources.time_seconds`；修改题目预算只影响新任务。2026-10-14线上无界杯MC题面、当前配置和已完成任务快照均为3600秒，LIBERO为1800秒。
+
 题目草稿在本机 `backend/data/challenge_drafts.json`，不进入 Git。当前实现使用 MineDojo 0.1 的 `open-ended` 环境；场景文件 `backend/data/minecraft-scenarios.json` 同样不进入 Git。没有安装 Docker 并通过真实 MineDojo 无头运行验收前，不要启用评测器。
 
 ## 可借鉴项目

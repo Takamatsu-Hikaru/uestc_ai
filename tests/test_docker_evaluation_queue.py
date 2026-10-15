@@ -135,6 +135,32 @@ class DockerQueueTests(unittest.TestCase):
         self.assertEqual(response.get_json()['status'], 'failed')
         self.assertEqual(self.claim().get_json()['id'], self.second_id)
 
+    def test_timeout_revokes_tokens_and_rejects_late_result_without_retry_or_extra_charge(self):
+        self.prepare_two_tracks()
+        first = self.claim().get_json()
+        worker = self.app.test_client()
+        lease = {'X-Evaluation-Lease': first['lease_token']}
+        response = worker.post(f"/api/evaluation-worker/runs/{first['id']}/complete",
+            headers=lease, json={'status': 'failed', 'error': 'evaluation time limit exceeded'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(worker.post(f"/api/evaluation-worker/runs/{first['id']}/heartbeat", headers=lease).status_code, 403)
+        self.assertEqual(worker.post(f"/api/evaluation-worker/runs/{first['id']}/api",
+            headers={'X-Evaluation-API-Token': first['api_token']}, json={'messages': []}).status_code, 403)
+        self.assertEqual(worker.post(f"/api/evaluation-worker/runs/{first['id']}/complete",
+            headers=lease, json={'status': 'completed', 'episodes': [{'task_success': 100}]}).status_code, 403)
+        self.assertEqual(self.claim().get_json()['id'], self.second_id)
+        visible = self.member.get(f"/api/evaluation-runs/{first['id']}").get_json()
+        self.assertEqual(visible['status'], 'failed')
+        self.assertEqual(visible['error'], 'evaluation time limit exceeded')
+        with self.app.app_context():
+            run = db.session.get(EvaluationRun, first['id'])
+            self.assertEqual(run.attempts, 1)
+            self.assertEqual(run.submission_version.submission.evaluation_runs_used, 1)
+            self.assertIsNotNone(run.finished_at)
+            self.assertIsNone(run.api_token_hash)
+            self.assertIsNone(run.lease_hash)
+            self.assertIsNone(run.lease_expires_at)
+
     def test_memory_admission_includes_environment_and_keeps_large_job_queued(self):
         self.prepare_two_tracks()
         with self.app.app_context():
