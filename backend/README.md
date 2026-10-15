@@ -94,6 +94,8 @@ python backend/apply_problem_template.py --problem open-world-minecraft-agent --
 
 管理员在题目设置的“指标测试与运行配置”中选择评测器、任务、CPU/内存/GPU、每次测试最长时长、每队最多测试次数、每次测试的场景数量、API 调用上限和展示指标。队伍自用的 AutoDL 算力额度在“资源额度”中设置，与自动评测的运行时长及测试次数分开。
 
+组队规则：账号在同一场赛事里只能属于一支队伍。建队人与通过邀请码入队的成员都会先经过该校验，已在本场比赛中时返回 `user already joined another team`，想换队必须先退出原队伍；不同赛事之间互不影响。
+
 Docker题目的`resources.memory_mb`限制选手程序，MC/LIBERO的可信环境分别另计4096/3072MiB。领取与上线检查按两者合计匹配节点广告的`memory_mb`；不足时排队等待符合容量的节点。当前节点全部测评容器的父组硬上限为6GiB，选手程序2GiB，并禁用容器交换空间，宿主预留独立内存。部署和OOM验收见[Docker节点内存保护](../deploy/linux/worker.md#内存保护--2026-10-06)。AutoDL原生分类端继续使用自己的GPU实例与沙箱限制。
 
 `evaluation_config.resources.time_seconds` 为一次测试的总运行预算（30—14400 秒），包含运行环境启动和全部场景，排队及下载程序包不计入；超时后工作进程强制清理运行容器并回传失败。`resources.episodes` 是该次测试的场景数，不是队伍可提交的次数。可选 `evaluation_config.max_team_runs` 为本题每队统一测试次数上限（1—1000）；旧配置省略时保持不限次数，新配置和 MC 模板默认 3 次。每次成功建立自主测试任务扣一次，草稿、正式提交与建立任务前的校验失败不扣；运行失败、超时仍保留已用次数。运行端租约故障重试同一任务不额外扣次数。

@@ -1173,6 +1173,44 @@ class PlatformApiTestCase(unittest.TestCase):
         self.assertEqual(removed.status_code, 400, removed.get_json())
         self.assertEqual(removed.get_json()["error"], "cannot remove team captain")
 
+    def test_one_team_per_person_inside_a_competition(self):
+        self.login(self.admin, "admin@uestcai.top")
+        competition = self.member.get("/api/competitions/paper-city-2027").get_json()
+        self.register(self.member, "solo-captain@std.uestc.edu.cn", "Solo captain")
+        rival_client = self.app.test_client()
+        self.register(rival_client, "rival-captain@std.uestc.edu.cn", "Rival captain")
+
+        first = self.member.post("/api/teams", json={"competition_id": competition["id"], "name": "First squad"})
+        self.assertEqual(first.status_code, 201, first.get_json())
+        first = first.get_json()
+
+        second_team = self.member.post("/api/teams", json={"competition_id": competition["id"], "name": "Second squad"})
+        self.assertEqual(second_team.status_code, 409, second_team.get_json())
+        self.assertEqual(second_team.get_json()["error"], "user already joined another team")
+
+        rival = rival_client.post("/api/teams", json={"competition_id": competition["id"], "name": "Rival squad"})
+        self.assertEqual(rival.status_code, 201, rival.get_json())
+        rival = rival.get_json()
+
+        switched = self.member.post("/api/teams/join", json={"invite_code": rival["invite_code"]})
+        self.assertEqual(switched.status_code, 409, switched.get_json())
+        self.assertEqual(switched.get_json()["error"], "user already joined another team")
+
+        rejoined = self.member.post("/api/teams/join", json={"invite_code": first["invite_code"]})
+        self.assertEqual(rejoined.status_code, 200, rejoined.get_json())
+        self.assertEqual(len(rejoined.get_json()["members"]), 1)
+
+        self.assertEqual(rival_client.post("/api/teams/join", json={"invite_code": first["invite_code"]}).status_code, 409)
+
+        second_competition = self.admin.post("/api/competitions", json={
+            "slug": "second-cup-2027", "name": "Second cup", "summary": "Another competition", "status": "published",
+        })
+        self.assertEqual(second_competition.status_code, 201, second_competition.get_json())
+        elsewhere = self.member.post("/api/teams", json={
+            "competition_id": second_competition.get_json()["id"], "name": "First squad",
+        })
+        self.assertEqual(elsewhere.status_code, 201, elsewhere.get_json())
+
 
 if __name__ == "__main__":
     unittest.main()

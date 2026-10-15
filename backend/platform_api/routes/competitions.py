@@ -37,6 +37,16 @@ def registration_deadline_response():
     return jsonify({"error": "registration deadline has passed"}), 409
 
 
+def competing_team(competition_id: str, user_id: str):
+    """The team this account already belongs to inside one competition, if any."""
+    return (Team.query.join(TeamMember, TeamMember.team_id == Team.id)
+            .filter(Team.competition_id == competition_id, TeamMember.user_id == user_id).first())
+
+
+def one_team_per_person_response():
+    return jsonify({"error": "user already joined another team"}), 409
+
+
 @competitions_bp.get("/competitions")
 def list_competitions():
     status = request.args.get("status")
@@ -171,6 +181,8 @@ def create_team():
         return jsonify({"error": "competition is not open"}), 409
     if deadline_passed(competition.registration_closes_at):
         return registration_deadline_response()
+    if competing_team(competition.id, user.id):
+        return one_team_per_person_response()
     if Team.query.filter_by(competition_id=competition.id, name=data["name"]).first():
         return jsonify({"error": "team name already exists"}), 409
     from ..ai_quotas import lock_competition, provision_team_quotas
@@ -200,6 +212,8 @@ def join_team():
     if deadline_passed(team.competition.registration_closes_at):
         return registration_deadline_response()
     if not team_member(team.id, user.id):
+        if competing_team(team.competition_id, user.id):
+            return one_team_per_person_response()
         db.session.add(TeamMember(team=team, user=user))
         audit("team.joined", "team", team.id)
         db.session.commit()

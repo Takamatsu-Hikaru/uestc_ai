@@ -119,6 +119,7 @@ export function formatApiError(error: unknown): string {
       "team member not found": "该成员不在队伍中。",
       "cannot remove team captain": "不能移除队长，请先转让队长。",
       "invalid invite code": "邀请码无效，请检查后重试。",
+      "user already joined another team": "你在本场比赛中已经加入了一支队伍，每场比赛每人只能加入一支队伍。",
       "team name already exists": "本赛事中已存在同名队伍，请换一个名称。",
       "team not found": "队伍不存在或已被解散。",
       "team already registered": "该队伍已经报名这个赛道。",
