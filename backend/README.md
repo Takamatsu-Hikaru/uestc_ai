@@ -70,6 +70,8 @@ python -m flask --app backend/app.py db upgrade
 
 Markdown 编辑器的单个资源默认限制为 8 MB，作品附件默认限制为 20 MB。后端会校验文件类型和大小，但生产部署仍应增加恶意文件扫描、对象存储权限和保留策略。
 
+`/api/works`、作品详情、个人主页内的参赛作品和附件下载统一校验查看权限：本队成员、管理员和组织者可查看；评委须已被分配到该赛事，且只能查看当前正式提交。其他队伍、未分配评委和匿名访客不能读取材料。旧附件即使仍标为 `public` 也必须通过同一检查；这些接口不使用匿名 Redis 缓存，返回 `private, no-store`。比赛结束后管理员/组织者可通过 `/api/manage/submissions/<id>/publication` 明确发布独立介绍，逐个授权附件下载、独立开放指标；原投稿正文、字段、快照、日志和证据不随介绍公开。审核通过的社区投稿仍可公开访问。
+
 外部评测方可以调用 `POST /api/scores/import`。CSV 接口为 `POST /api/scores/import-csv`，multipart 字段包括 `competition_id`、`problem_id`、`source`、`label` 和 `file`。CSV 必填列为 `submission_version_id,total_score`，可选列为 `metric_<name>` 与 `feedback_md`。
 
 平台拒绝草稿版本和跨题目成绩。公开榜单在赛事 `ends_at` 前不会返回成绩；赛事结束后，只有外部评分与在线评审满足当前权重配置的作品才进入最终排名。

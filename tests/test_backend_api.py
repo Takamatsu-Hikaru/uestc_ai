@@ -70,6 +70,7 @@ class PlatformApiTestCase(unittest.TestCase):
             "password": password,
             "confirm_password": password,
             "verification_code": verification_code,
+            "student_number": "2026123456789",
         }
         if invite_code:
             register_payload["invite_code"] = invite_code
@@ -220,7 +221,7 @@ class PlatformApiTestCase(unittest.TestCase):
 
     def test_email_verification_and_external_registration_invites(self):
         campus_client = self.app.test_client()
-        campus_email = "verified-student@std.uestc.edu.cn"
+        campus_email = "2025120903001@std.uestc.edu.cn"
         verification = self.code_request(campus_client, campus_email)
         self.assertEqual(verification.status_code, 202, verification.get_json())
         verification_code = verification.get_json()["debug_code"]
@@ -228,6 +229,7 @@ class PlatformApiTestCase(unittest.TestCase):
         invalid = campus_client.post("/api/auth/register", json={
             "email": campus_email,
             "name": "邮箱验证同学",
+            "student_number": "2025120903001",
             "password": "secure-pass-123",
             "confirm_password": "secure-pass-123",
             "verification_code": "000000" if verification_code != "000000" else "111111",
@@ -236,15 +238,17 @@ class PlatformApiTestCase(unittest.TestCase):
         registered = campus_client.post("/api/auth/register", json={
             "email": campus_email,
             "name": "邮箱验证同学",
+            "student_number": "2025120903001",
             "password": "secure-pass-123",
             "confirm_password": "secure-pass-123",
             "verification_code": verification_code,
+            "student_number": "2026123456789",
         })
         self.assertEqual(registered.status_code, 201, registered.get_json())
         self.assertTrue(registered.get_json()["user"]["email_verified"])
 
         rate_client = self.app.test_client()
-        rate_email = "rate-limit@std.uestc.edu.cn"
+        rate_email = "2025120903002@std.uestc.edu.cn"
         first = self.code_request(rate_client, rate_email)
         second = self.code_request(rate_client, rate_email)
         self.assertEqual(first.status_code, 202, first.get_json())
@@ -386,8 +390,7 @@ class PlatformApiTestCase(unittest.TestCase):
         self.assertEqual(next(item for item in queue if item["id"] == version_id)["evaluation"]["metrics"], {"task_success": 50, "deaths": 1})
         self.assertEqual(self.reviewer.post("/api/reviews", json=review_payload).status_code, 201)
         public_result = self.app.test_client().get(f"/api/works/{submitted.get_json()['id']}")
-        self.assertEqual(public_result.status_code, 200)
-        self.assertIsNone(public_result.get_json()["evaluation"])
+        self.assertEqual(public_result.status_code, 404)
         self.assertEqual(public["evaluation"]["metrics"], {"task_success": 50, "deaths": 1})
         with self.app.app_context():
             from platform_api.models import Score, ScoreBatch

@@ -13,6 +13,7 @@ from ..evaluation import adapters
 from ..evaluation_trials import can_view_result, selected_result_error
 from ..ai_quotas import lock_problem
 from ..submission_schema import validate_submission_materials
+from ..submission_access import can_view_submission, can_view_work, can_download_asset
 from ..reviewing import calculate_review_total, combined_score, effective_reviewer_weights, external_weight_percent, is_review_locked, latest_external_score, review_score
 from ..security import current_user, require_user, team_member
 from ..uploading import file_extension, original_filename, save_with_limit
@@ -20,6 +21,16 @@ from ..utils import audit, payload
 
 
 submissions_bp = Blueprint("submissions", __name__)
+
+
+@submissions_bp.after_request
+def protect_material_responses(response):
+    if request.endpoint in {'submissions.public_work_archive', 'submissions.public_work', 'submissions.download_asset'}:
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.vary.update(('Cookie', 'Authorization'))
+    return response
+
+
 ALLOWED_EXTENSIONS = {"md", "pdf", "csv", "json", "zip", "tar", "gz", "png", "jpg", "jpeg", "webp", "mp4"}
 PUBLIC_VERSION_STATUSES = {"submitted", "confirmed", "published"}
 
@@ -48,7 +59,9 @@ def current_version(submission: Submission) -> SubmissionVersion | None:
 
 def public_work_payload(version: SubmissionVersion, include_content: bool = True) -> dict:
     submission = version.submission
-    snapshot = version.snapshot or {}
+    private = can_view_submission(submission, version)
+    publication = submission.publication or {}
+    snapshot = (version.snapshot or {}) if private else {"title": publication.get("title")}
     data = {
         **submission.to_dict(),
         "title": snapshot.get("title") or submission.title,
@@ -73,7 +86,8 @@ def public_work_payload(version: SubmissionVersion, include_content: bool = True
             "slug": submission.problem.track.competition.slug,
             "name": submission.problem.track.competition.name,
         },
-        "version": version.to_dict() if include_content else {
+        "view": "review" if private else "public",
+        "version": version.to_dict() if include_content and private else {
             "id": version.id,
             "submission_id": version.submission_id,
             "version": version.version,
@@ -81,7 +95,17 @@ def public_work_payload(version: SubmissionVersion, include_content: bool = True
             "created_at": version.created_at.isoformat(),
         },
     }
-    if include_content:
+    if include_content and not private:
+        data["version"].update(readme_md=publication.get("description_md", ""), fields={}, snapshot={})
+        data["assets"] = [asset.to_dict() for asset in version.assets if asset.id in publication.get("asset_ids", [])]
+        if publication.get("metrics_public") is True:
+            result = current_evaluation(version)
+            if result and result["status"] == "completed":
+                data["public_metrics"] = {
+                    "metrics": result["metrics"],
+                    "definitions": result.get("metric_definitions", []),
+                }
+    if include_content and private:
         data["assets"] = [asset.to_dict() for asset in version.assets]
         data["evaluation_config"] = submission.problem.evaluation_config
         result = current_evaluation(version)
@@ -156,6 +180,8 @@ def overwrite_version(submission: Submission, data: dict, user_id: str):
             created_at=now,
         )
         db.session.add(version)
+    # Any material replacement revokes prior public approval.
+    submission.publication = {}
     submission.current_version = 1
     submission.title = snapshot["title"]
     submission.status = status
@@ -271,7 +297,7 @@ def submit_work():
         db.session.add(submission)
         db.session.flush()
     version, removed_storage_names = overwrite_version(submission, data, user.id)
-    visibility = "private" if status == "draft" else "public"
+    visibility = "private" if status == "draft" else "reviewers"
     upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
     if any(not (upload_folder / asset.storage_name).is_file() for asset in retained):
         db.session.rollback()
@@ -341,7 +367,11 @@ def public_work_archive():
         query = query.filter(Problem.slug == request.args["problem"])
     submissions = query.order_by(Submission.updated_at.desc()).all()
     versions = [current_version(submission) for submission in submissions]
-    return jsonify([public_work_payload(version, include_content=False) for version in versions if version and version.status in PUBLIC_VERSION_STATUSES])
+    response = jsonify([public_work_payload(version, include_content=False) for version in versions
+                        if version and version.status in PUBLIC_VERSION_STATUSES
+                        and can_view_work(version.submission, version)])
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @submissions_bp.get("/works/<submission_id>")
@@ -352,7 +382,11 @@ def public_work(submission_id: str):
     version = current_version(submission)
     if not version or version.status not in PUBLIC_VERSION_STATUSES:
         return jsonify({"error": "work has no public version"}), 404
-    return jsonify(public_work_payload(version))
+    if not can_view_work(submission, version):
+        return jsonify({"error": "work not found"}), 404
+    response = jsonify(public_work_payload(version))
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @submissions_bp.get("/me/submissions")
@@ -475,10 +509,11 @@ def upload_asset(version_id: str):
         size = save_with_limit(file.stream, target, size_limit)
     except ValueError:
         return jsonify({"error": "submission asset exceeds size limit", "limit": size_limit}), 413
-    visibility = "public" if version.status in PUBLIC_VERSION_STATUSES else "private"
+    visibility = "reviewers" if version.status in PUBLIC_VERSION_STATUSES else "private"
     Review.query.filter_by(submission_version_id=version.id).delete(synchronize_session=False)
     Score.query.filter_by(submission_version_id=version.id).delete(synchronize_session=False)
     asset = SubmissionAsset(id=asset_id, version=version, original_name=display_name, storage_name=storage_name, content_type=file.mimetype or "application/octet-stream", size=size, visibility=visibility)
+    version.submission.publication = {}
     db.session.add(asset)
     db.session.flush()
     audit("submission.asset_uploaded", "submission", version.submission_id, {"asset_id": asset.id, "name": display_name})
@@ -491,12 +526,12 @@ def download_asset(asset_id: str):
     asset = db.session.get(SubmissionAsset, asset_id)
     if not asset:
         return jsonify({"error": "asset not found"}), 404
-    user = current_user()
-    if asset.version.status not in PUBLIC_VERSION_STATUSES:
-        allowed = user and (can_manage(asset.version.submission, user.id) or user.role in {"admin", "organizer"})
-        if not allowed:
-            return jsonify({"error": "asset not found"}), 404
-    return send_from_directory(current_app.config["UPLOAD_FOLDER"], asset.storage_name, as_attachment=True, download_name=asset.original_name)
+    # Check the current viewer even for legacy rows marked "public".
+    if not can_download_asset(asset):
+        return jsonify({"error": "asset not found"}), 404
+    response = send_from_directory(current_app.config["UPLOAD_FOLDER"], asset.storage_name, as_attachment=True, download_name=asset.original_name)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @submissions_bp.post("/reviews")
