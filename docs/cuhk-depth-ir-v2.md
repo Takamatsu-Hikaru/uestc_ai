@@ -83,6 +83,19 @@ python backend/classification_v2_acceptance.py \
 
 多个验收并行时，分别设置 `--uid`，每个进程使用独立 GPU 和输出目录。YOLO、Matplotlib 与 XDG 配置缓存统一写入该次推理的 scratch 目录。
 
+三个训练对照完成并选定 baseline 后，在已有 GPU reservation 中调用一次 `deploy/linux/cuhk-full-validation-acceptance.sh`：
+
+```bash
+bash deploy/linux/cuhk-full-validation-acceptance.sh \
+  "$ISOLATED_PYTHON" "$PLATFORM_BACKEND" "$VERIFIED_BASELINE_EXPORT" \
+  "$COMPACT_DATA/validation" "$AUDIT/deployment_predictions.npz" "$AUDIT/audit.json" \
+  "$NEW_FULL_ACCEPTANCE_OUTPUT"
+```
+
+脚本要求 `CUDA_VISIBLE_DEVICES` 为已有单卡分配，使用全部 466 段公开验证集，不调度显卡、不训练。输出 `acceptance.json` 记录实际项目成果分、正确数、准确率、Macro F1 和平均推理耗时；`evidence.json` 保留逐片段预测与耗时。平均推理耗时含读取图像、预处理、检测、分类、CUDA 同步和进程通信，排除第一个预热片段；验收总耗时、judge 总耗时另列。
+
+收集脚本先核对 FP32 审计中的权重 SHA 与预测文件 SHA，再按 `evidence.predictions[].file + '.npy'` 对齐 `deployment_predictions.npz` 的 `sample_ids`。`fp32-comparison.csv` 保存标签、平台预测、FP32 预测、是否一致和单段耗时；`full-validation-comparison.json` 保存差异样本列表与汇总。该流程验证公开验证集上的完整平台推理，生产镜像恢复、HTTPS 权重下载及网站提交验收分别记录。
+
 ## 参数量申报与复核
 
 100M 上限适用于分类器、人物检测器及其他参与推理的模型，冻结参数也计入。提交材料列出各模型名称、参数量、权重来源与 SHA256、合计参数量，并提供加载同一提交权重的统计命令。PyTorch 模型可用 `sum(p.numel() for p in model.parameters())` 统计，逐个列出推理组件后汇总；训练时使用、推理时移除的教师模型单独说明。
