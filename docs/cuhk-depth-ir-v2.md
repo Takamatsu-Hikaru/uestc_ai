@@ -80,3 +80,5 @@ python backend/classification_v2_acceptance.py \
 ```
 
 该命令使用实际 runner 的独立 UID、Landlock/seccomp、匿名输入与计时，保留推理日志、逐样本预测和计分结果。默认将本地权重暂存为只读文件，适用于权重尚未发布的实验验收；权重发布后加 `--weights-url`，同时验收 HTTPS 下载与 SHA 检查。沙箱解释器使用 `python -I`，依赖需安装在对应虚拟环境内，`PYTHONPATH` 不生效。小样本验收分数用于检查接口，完整验证集成绩另列。
+
+多个验收并行时，分别设置 `--uid`，每个进程使用独立 GPU 和输出目录。YOLO、Matplotlib 与 XDG 配置缓存统一写入该次推理的 scratch 目录。

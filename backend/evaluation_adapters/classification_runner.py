@@ -272,6 +272,8 @@ def evaluate(package: Path, dataset: Path, manifest_digest: str, output: Path, *
         script = Path(__file__).with_name("classification_inference.py").resolve()
         environment = {"PATH": str(Path(sys.executable).parent) + ":/usr/bin:/bin", "HOME": str(sandbox_tmp),
                        "TMPDIR": str(sandbox_tmp), "CUDA_VISIBLE_DEVICES": gpu,
+                       "XDG_CONFIG_HOME": str(sandbox_tmp), "YOLO_CONFIG_DIR": str(sandbox_tmp),
+                       "MPLCONFIGDIR": str(sandbox_tmp / "matplotlib"),
                        "OMP_NUM_THREADS": str(cpus), "MKL_NUM_THREADS": str(cpus), "OPENBLAS_NUM_THREADS": str(cpus),
                        "PYTHONNOUSERSITE": "1", "PYTHONUNBUFFERED": "1", "CUBLAS_WORKSPACE_CONFIG": ":4096:8"}
         with (root / "inference.log").open("wb") as log:

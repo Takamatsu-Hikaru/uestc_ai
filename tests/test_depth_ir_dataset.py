@@ -193,7 +193,10 @@ for line in sys.stdin:
         baseline.mkdir()
         names = ('inference.py', 'config.json', 'baseline.pt', 'README.md', 'predict.py',
                  'analyze_predictions.py', 'metrics.json', 'environment.json', 'audit.json',
-                 'training/train_raw.py', 'training/prepare_training_manifest.py')
+                 'raw_model.py', 'ig65m_backbone.py', 'depth_ir_io.py', 'build_cache.py',
+                 'training/train_raw.py', 'training/prepare_training_manifest.py',
+                 'training/build_cache.py', 'training/raw_model.py',
+                 'training/ig65m_backbone.py', 'training/depth_ir_io.py', 'training/make_manifest.py')
         for name in names:
             path = baseline / name
             path.parent.mkdir(exist_ok=True)
@@ -207,6 +210,10 @@ for line in sys.stdin:
         with zipfile.ZipFile(package) as archive:
             self.assertIn('install_classification_v2_shards.py', archive.namelist())
             self.assertEqual(json.loads(archive.read('config.json'))['weights_file'], 'baseline.pt')
+        (baseline / 'manifest.json').write_text(json.dumps({'files': [r for r in records if r['path'] != 'training/build_cache.py']}))
+        with self.assertRaisesRegex(ValueError, 'missing training'):
+            build_starter(baseline, self.root / 'inference-only.zip')
+        (baseline / 'manifest.json').write_text(json.dumps({'files': records}))
         (baseline / 'baseline.pt').write_bytes(b'changed')
         with self.assertRaisesRegex(ValueError, 'differs from its manifest'):
             build_starter(baseline, self.root / 'tampered.zip')

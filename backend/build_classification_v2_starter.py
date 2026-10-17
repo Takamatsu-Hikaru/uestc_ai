@@ -27,12 +27,17 @@ def build(baseline, output):
         files[item['path']] = path
     required = {'inference.py', 'config.json', 'baseline.pt', 'README.md', 'predict.py',
                 'analyze_predictions.py', 'metrics.json', 'environment.json', 'audit.json',
-                'training/train_raw.py', 'training/prepare_training_manifest.py'}
+                'raw_model.py', 'ig65m_backbone.py', 'depth_ir_io.py', 'build_cache.py',
+                'training/train_raw.py', 'training/prepare_training_manifest.py',
+                'training/build_cache.py', 'training/raw_model.py',
+                'training/ig65m_backbone.py', 'training/depth_ir_io.py', 'training/make_manifest.py'}
     if not required <= set(files):
         raise ValueError('Baseline export is missing training, prediction, or analysis files')
     config = json.loads((baseline / 'config.json').read_text(encoding='utf-8'))
     if config.get('input_version') != 2 or config.get('weights_file') != 'baseline.pt':
         raise ValueError('Student package requires the local version-2 weights configuration')
+    if config.get('person_crop') and config.get('detector_file') not in files:
+        raise ValueError('Person-crop baseline requires its verified detector weights')
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'x', zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(files.items()):

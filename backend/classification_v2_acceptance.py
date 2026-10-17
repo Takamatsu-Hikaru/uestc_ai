@@ -72,7 +72,7 @@ def run(args):
             archive.writestr('config.json', json.dumps(config))
         metrics = evaluate(package, dataset, digest_file(dataset / 'manifest.json'), output,
                            gpu=args.gpu, seconds=args.seconds, memory_mb=args.memory_mb, cpus=args.cpus,
-                           model_hosts=hosts)
+                           uid=args.uid, model_hosts=hosts)
         # Load the exact platform score function without requiring the Flask app.
         spec = importlib.util.spec_from_file_location('score', Path(__file__).parent / 'platform_api/performance_scoring.py')
         scoring = importlib.util.module_from_spec(spec)
@@ -97,6 +97,7 @@ if __name__ == '__main__':
     parser.add_argument('--seconds', type=int, default=1800)
     parser.add_argument('--memory-mb', type=int, default=6144)
     parser.add_argument('--cpus', type=int, default=4)
+    parser.add_argument('--uid', type=int, default=20000, help='Distinct unprivileged UID for each concurrent acceptance')
     parser.add_argument('--weights-url')
     parser.add_argument('--model-host', action='append', help='Approved download/redirect host, repeatable')
     print(json.dumps(run(parser.parse_args()), ensure_ascii=False))
