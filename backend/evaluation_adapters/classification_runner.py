@@ -24,6 +24,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from .classification_assets import download_weights
+from .depth_ir_dataset import validate_manifest, expose_sample
 
 
 def validate_scenarios(scenes, episodes):
@@ -55,6 +56,8 @@ def load_dataset(directory: Path, expected_digest: str):
     if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_uid != 0 or manifest.stat().st_size > 16 * 1024 * 1024 or digest_file(manifest) != expected_digest:
         raise ValueError("private dataset manifest failed SHA256 verification")
     data = json.loads(manifest.read_text())
+    if isinstance(data, dict) and data.get("version") == 2:
+        return validate_manifest(directory, data)
     if (not isinstance(data, dict) or set(data) != {"version", "classes", "modality", "samples"}
             or data["version"] != 1 or data["modality"] != "depth"
             or not isinstance(data["classes"], list) or len(data["classes"]) != 40
@@ -283,9 +286,7 @@ def evaluate(package: Path, dataset: Path, manifest_digest: str, output: Path, *
                 raise ValueError("inference did not initialize correctly")
             for index, sample in enumerate(data["samples"]):
                 remaining()
-                sample_path = exposed / "clip.npy"
-                shutil.copyfile(dataset / sample["file"], sample_path)
-                sample_path.chmod(0o644)
+                sample_path = expose_sample(dataset, sample, exposed, data["version"])
                 # IDs/filenames and hidden labels are never sent to inference.
                 request_id = os.urandom(16).hex()
                 message = {"type": "predict", "id": request_id, "sample_path": str(sample_path)}
