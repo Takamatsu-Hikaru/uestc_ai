@@ -192,7 +192,7 @@ for line in sys.stdin:
         baseline = self.root / 'baseline'
         baseline.mkdir()
         names = ('inference.py', 'config.json', 'baseline.pt', 'README.md', 'predict.py',
-                 'analyze_predictions.py', 'metrics.json', 'environment.json', 'audit.json',
+                 'analyze_predictions.py', 'preview_sample.py', 'metrics.json', 'environment.json', 'audit.json',
                  'raw_model.py', 'ig65m_backbone.py', 'depth_ir_io.py', 'build_cache.py',
                  'training/train_raw.py', 'training/prepare_training_manifest.py',
                  'training/build_cache.py', 'training/raw_model.py',
@@ -209,10 +209,14 @@ for line in sys.stdin:
         build_starter(baseline, package)
         with zipfile.ZipFile(package) as archive:
             self.assertIn('install_classification_v2_shards.py', archive.namelist())
+            self.assertIn('preview_sample.py', archive.namelist())
             self.assertEqual(json.loads(archive.read('config.json'))['weights_file'], 'baseline.pt')
         (baseline / 'manifest.json').write_text(json.dumps({'files': [r for r in records if r['path'] != 'training/build_cache.py']}))
         with self.assertRaisesRegex(ValueError, 'missing training'):
             build_starter(baseline, self.root / 'inference-only.zip')
+        (baseline / 'manifest.json').write_text(json.dumps({'files': [r for r in records if r['path'] != 'preview_sample.py']}))
+        with self.assertRaisesRegex(ValueError, 'missing training'):
+            build_starter(baseline, self.root / 'without-preview.zip')
         (baseline / 'manifest.json').write_text(json.dumps({'files': records}))
         (baseline / 'baseline.pt').write_bytes(b'changed')
         with self.assertRaisesRegex(ValueError, 'differs from its manifest'):

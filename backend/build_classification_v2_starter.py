@@ -26,7 +26,7 @@ def build(baseline, output):
             raise ValueError('Exported baseline file differs from its manifest')
         files[item['path']] = path
     required = {'inference.py', 'config.json', 'baseline.pt', 'README.md', 'predict.py',
-                'analyze_predictions.py', 'metrics.json', 'environment.json', 'audit.json',
+                'analyze_predictions.py', 'preview_sample.py', 'metrics.json', 'environment.json', 'audit.json',
                 'raw_model.py', 'ig65m_backbone.py', 'depth_ir_io.py', 'build_cache.py',
                 'training/train_raw.py', 'training/prepare_training_manifest.py',
                 'training/build_cache.py', 'training/raw_model.py',
