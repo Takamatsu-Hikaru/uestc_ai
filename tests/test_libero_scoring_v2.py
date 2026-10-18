@@ -19,7 +19,7 @@ from platform_api.extensions import db
 from platform_api.models import SubmissionVersion
 from platform_api.reviewing import review_score, combined_score
 from platform_api.problem_setup import validate_runtime
-from platform_api.evaluation import validate_evaluation_config
+from platform_api.evaluation import ADAPTERS, validate_evaluation_config, validate_metrics
 
 
 class ScoringTests(unittest.TestCase):
@@ -43,6 +43,24 @@ class ScoringTests(unittest.TestCase):
         request["runtime"]["scenarios"][-1]["max_steps"] = 4001
         with self.assertRaises(ValueError):
             validate_runtime(request["runtime"], evaluation)
+
+    def test_final_request_step_counts_are_accepted_by_result_metric_validation(self):
+        path = Path(__file__).resolve().parents[1] / "deploy/libero/final-request.json"
+        request = json.loads(path.read_text(encoding="utf-8"))
+        evaluation = validate_evaluation_config(request["evaluation_config"])
+        validate_runtime(request["runtime"], evaluation)
+        # A worker job freezes these definitions when it is scheduled.
+        evaluation["metric_definitions"] = ADAPTERS["libero-agent-v1"]["metrics"]
+        values = {key: 0 for key in evaluation["metrics"]}
+        for accepted in (request["runtime"]["scenarios"][-1]["max_steps"], 4000):
+            values.update(action_count=accepted, invalid_actions=accepted)
+            normalized = validate_metrics(evaluation, values)
+            self.assertEqual(normalized["action_count"], accepted)
+            self.assertEqual(normalized["invalid_actions"], accepted)
+        for metric in ("action_count", "invalid_actions"):
+            invalid = {**values, metric: 4001}
+            with self.assertRaisesRegex(ValueError, metric):
+                validate_metrics(evaluation, invalid)
 
     def test_reference_curve_and_two_equal_targets(self):
         for time, expected in ((50, 100), (100, 80), (150, 60), (200, 60)):

@@ -29,7 +29,7 @@ python backend/activate_libero_release.py --config outputs/libero-release/site-c
 
 第一条预览题目；第二条保存旧配置后应用。新建赛题可在管理页导入生成的 `wujie-robot-arm-agent.zip`。本次只更新 C 题，无需重新导入整场比赛。该变更不新增数据库列。
 
-网页重新构建、重启，静态开发包同步到 `dist/client/downloads/`。访问 C 题，核对开发包下载、离线环境链接、五题分值和报名入口。API 平台在 C 题配置统一允许模型和每队额度，学生从该页面获取密钥。模型名与最终评测策略使用同一名称。
+网页重新构建、重启，静态开发包同步到 `dist/client/downloads/`。访问 C 题，核对开发包下载、离线环境链接、五题分值和报名入口。开放自测前，在 API 平台为 C 题配置统一允许模型和每队额度；新队伍会取得对应资源，学生从该页面获取密钥。模型名与最终评测策略使用同一名称。
 
 ## 评分录入
 
