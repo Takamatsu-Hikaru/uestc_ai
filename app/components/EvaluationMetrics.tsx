@@ -25,7 +25,14 @@ export function EvaluationMetrics({ config, run, showTiming = true, showLogs = t
     {run && showTiming && <EvaluationTiming run={run} />}
     {run?.status === "completed" ? <>
       {run.performance && <p><strong>自动表现分：{run.performance.score.toFixed(2)} / 100</strong> · 按题面公式计算，正式提交后用于第一阶段评分。</p>}
-      <h4>跨场景平均</h4>
+      {run.performance && config.adapter === "classification-v1" && <p>计分版本：{run.performance.preset === "wujie-depth-baseline-v2" ? "v2 基准与提升" : "v1 准确率加权"}</p>}
+      {run.performance?.components && <dl aria-label="项目成果计分明细">
+        <div><dt>基准分</dt><dd>{metricValue(run.performance.components.baseline)} / 60</dd></div>
+        <div><dt>提升分</dt><dd>{metricValue(run.performance.components.improvement)} / 20</dd></div>
+        <div><dt>类别表现</dt><dd>{metricValue(run.performance.components.macro_f1)} / 10</dd></div>
+        <div><dt>推理效率</dt><dd>{metricValue(run.performance.components.efficiency)} / 10</dd></div>
+      </dl>}
+      <h4>{config.adapter === "classification-v1" ? "评测集整体结果" : "跨场景平均"}</h4>
       <dl>{config.metrics.map((key) => <div key={key}><dt>{definitions[key]?.label ?? key}</dt><dd>{metricValue(run.metrics[key], definitions[key]?.unit)}</dd></div>)}</dl>
       {run.episodes?.length ? <div className="evaluation-episodes">
         {run.episodes.map((episode, index) => {

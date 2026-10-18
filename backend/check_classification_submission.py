@@ -46,8 +46,11 @@ def check(package, weights=None):
                     raise ValueError('external weights require an HTTPS URL')
             if weights:
                 local = Path(weights)
+                sha = hashlib.sha256()
                 with local.open('rb') as stream:
-                    digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+                    while chunk := stream.read(1024 * 1024):
+                        sha.update(chunk)
+                digest = sha.hexdigest()
                 if local.stat().st_size != ref['size'] or digest != ref['sha256']:
                     raise ValueError('local weights differ from submitted reference')
     return {'status': 'passed', 'package_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),

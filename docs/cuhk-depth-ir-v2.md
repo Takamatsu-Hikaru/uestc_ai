@@ -34,13 +34,13 @@ python backend/build_classification_v2_starter.py \
   --output ./public/downloads/wujie-classification-depth-ir-v2.zip
 ```
 
-本地 `config.json` 使用 `weights_file: baseline.pt`。官网提交 ZIP 使用独立配置 `weights: {url, sha256, size}`，平台先下载固定权重，再将 `weights_path` 传给模型。较大的分类器权重不装入代码 ZIP。
+本地 `config.json` 使用 `weights_file: baseline.pt`。官网提交采用队伍私有权重上传，代码 ZIP 的独立配置使用 `weights_asset: {id, sha256, size}`；平台冻结该记录并把只读 `weights_path` 传给模型。较大的分类器权重不装入代码 ZIP。已有 HTTPS＋SHA 下载方式保留。
 
 ## 推理与计分
 
 接口仍为 `Model(config, device).predict(sample_path)`，返回 40 个有限分数。v2 的 `sample_path` 是当前片段目录；v1 仍传 NPY。评测器只暴露当前片段图像，目录名固定为 `clip`，帧名改为 `000000.png` 等序号。模型看不到清单、标签、人物编号或来源文件名。
 
-项目成果沿用现有百分制：`0.80 × accuracy + 0.10 × macro_f1 + 0.10 × accuracy × min(1, 100 / latency_ms)`。首样本计入准确率，作为计时预热；之后计时包含选手图像读取、预处理、检测、分类和 CUDA 同步。数据向隔离目录的复制属于组织方准备时间。100 ms 参考值等待新版 baseline 在正式评测 GPU 的完整耗时测量，本次代码不改权重和阈值。
+线上 `wujie-depth-v1` 计分保留。v2 候选增加 `wujie-depth-baseline-v2`：基准60＋提升20＋Macro F1项10＋效率项10，定义见 `docs/cuhk-depth-ir-v2-scoring.md`。只有新题显式配置该版本与实测参考值才会启用；历史自测继续使用原计分快照。首样本计入准确率，作为计时预热；之后计时包含选手图像读取、预处理、检测、分类、CUDA 同步和进程通信。数据向隔离目录的复制属于组织方准备时间。
 
 ## 镜像与发布配置
 
@@ -59,7 +59,15 @@ python backend/build_classification_v2_starter.py \
 
 新镜像 UUID、资源入口和最终成绩在发布验收时填写。数据、baseline、环境和题面作为同一个版本发布。
 
-组织方最终测试集另行转换到相同的同步抽帧、分辨率和模态规范，使用 `prepare_depth_ir_dataset.py` 生成严格 v2 清单，再由 `install_classification_v2_data.py` 以包 SHA、manifest SHA 安装到私有版本目录。测试标签及来源清单只留在组织方；正式模型比较和调参使用公开验证集。测试集不装入学生下载包或训练镜像。
+组织方最终测试集另行转换到相同的同步抽帧、分辨率和模态规范。`prepare_depth_ir_dataset.py --compact` 从完整原帧取最多32个均匀位置（NumPy linspace后round），深度与IR使用同一索引，Pillow BILINEAR缩放至304×228、PNG压缩等级6；生成严格v2清单与采样sidecar。该处理与已发布候选学生包一致。再由 `install_classification_v2_data.py` 以包 SHA、manifest SHA 安装到私有版本目录。测试标签及来源清单只留在组织方；正式模型比较和调参使用公开验证集。测试集不装入学生下载包或训练镜像。
+
+```bash
+python backend/prepare_depth_ir_dataset.py --compact \
+  --clips "$PRIVATE_ORIGINAL_TEST_CLIPS" --labels "$PRIVATE_TEST_LABEL_CSV" \
+  --classes "$CLASS_ORDER_JSON" --output "$NEW_PRIVATE_COMPACT_TEST_DIR"
+```
+
+输入CSV使用`file,label`两列，保持原470段测试划分和类别映射。转换后核对470段、SHA、与训练/验证的人物及片段互斥，再安装私有评测环境。
 
 ## 验收
 
@@ -85,7 +93,7 @@ python backend/classification_v2_acceptance.py \
 
 多个验收并行时，分别设置 `--uid`，每个进程使用独立 GPU 和输出目录。YOLO、Matplotlib 与 XDG 配置缓存统一写入该次推理的 scratch 目录。
 
-三个训练对照完成并选定 baseline 后，在已有 GPU reservation 中调用一次 `deploy/linux/cuhk-full-validation-acceptance.sh`：
+选定的一份 baseline 完成新数据训练和导出后，在已有 GPU reservation 中调用一次 `deploy/linux/cuhk-full-validation-acceptance.sh`。其余帧数、裁剪和架构对照另作研究记录：
 
 ```bash
 bash deploy/linux/cuhk-full-validation-acceptance.sh \

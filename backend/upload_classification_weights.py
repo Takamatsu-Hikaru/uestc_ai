@@ -30,8 +30,11 @@ def upload(api, weights, problem, team, email, password, asset_id=None):
             raise RuntimeError(f'HTTP {error.code}: {payload}') from None
 
     path = Path(weights)
+    sha = hashlib.sha256()
     with path.open('rb') as stream:
-        digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+        while chunk := stream.read(1024 * 1024):
+            sha.update(chunk)
+    digest = sha.hexdigest()
     meta = {'name': path.name, 'size': path.stat().st_size, 'sha256': digest, 'team_id': team}
     if not 1 <= meta['size'] <= 2 * 1024**3:
         raise ValueError('weights must be between 1 byte and 2 GiB')
