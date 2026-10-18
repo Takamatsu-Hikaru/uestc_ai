@@ -32,7 +32,7 @@ def build(output=None, kind=None):
         entries = {name: entry for name, entry in entries.items() if name == kind}
     for kind, entry in entries.items():
         with zipfile.ZipFile(output / f"wujie-{kind}-starter.zip", "w", zipfile.ZIP_DEFLATED) as archive:
-            write_source(archive, ROOT / "backend/competitions/wujie-cup-2026/technical-route.md", "technical-route.md")
+            write_source(archive, SOURCE / "libero/starter/REPORT.md" if kind == "arm" else ROOT / "backend/competitions/wujie-cup-2026/technical-route.md", "technical-route.md")
             write_source(archive, entry, "agent.py")
             write_source(archive, SOURCE / "starter_api.py", "model_api.py")
             write_source(archive, SOURCE / "practice.py", "practice.py")

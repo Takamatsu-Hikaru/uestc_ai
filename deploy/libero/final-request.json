@@ -1,7 +1,7 @@
 {
-  "scene_set_version": "libero-five-20261018",
+  "scene_set_version": "libero-five-20261018-v3-clearance",
   "runtime": {
-    "image": "sha256:2a280a433247251c3a4d8d2b6129e55e8a27dfa379d86e3d7f638a8ae9822ed1",
+    "image": "sha256:233f93cdc786b78aed8f5b8348055985243ca856bfbfa2a436e9cc15dfe22408",
     "agent_image": "sha256:923f54c25f6c7f15b59b35bbc062e452320c54dde8e599321ff55be70eb901a8",
     "scenarios": [
       {
@@ -47,7 +47,7 @@
         "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
         "init_state_id": 2,
         "seed": 44,
-        "max_steps": 1000,
+        "max_steps": 1200,
         "scoring": {
           "version": 2,
           "reference_steps": [
@@ -66,7 +66,7 @@
         "scene_asset": "sort-groceries",
         "init_state_id": 0,
         "seed": 81231,
-        "max_steps": 1600,
+        "max_steps": 1400,
         "scoring": {
           "version": 2,
           "reference_steps": [
@@ -85,7 +85,7 @@
         "scene_asset": "table-setting",
         "init_state_id": 0,
         "seed": 81232,
-        "max_steps": 1600,
+        "max_steps": 2200,
         "scoring": {
           "version": 2,
           "reference_steps": [

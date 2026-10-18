@@ -81,4 +81,6 @@ class Motion:
                 "requested_position": self.target, "actual_position": observation["eef_position"],
                 "position_error_metres": self.last_error,
                 "gripper_position": observation["gripper_position"],
+                "gripper_width_metres": abs(observation["gripper_position"][0] - observation["gripper_position"][1]),
+                "gripper_command": self.gripper,
                 "actual_delta": [a-b for a, b in zip(observation["eef_position"], self.start)]}

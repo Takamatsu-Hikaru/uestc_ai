@@ -24,8 +24,9 @@ def build_catalogue(images: dict | None = None):
             "launch": {"require_ready": True, "rules_version": "wujie-2026-v2"},
             "checkpoints": [{"id": f"checkpoint-{i}", "label": label, "due_at": None}
                             for i, label in enumerate(["首次跑通", "方案迭代", "提交预演"], 1)],
-            "scoring_stages": {"performance_percent": 80, "report_percent": 20,
-                               "first_stage_percent": 50, "defense_percent": 50}},
+            "scoring_stages": {"performance_percent": 100 * 5 / 6, "report_percent": 100 / 6,
+                               "first_stage_percent": 60, "defense_percent": 40,
+                               "final_weights": {"performance": 50, "report": 10, "defense": 40}}},
     }
     readme = (SOURCE / "technical-route.md").read_text(encoding="utf-8")
     classification = {
@@ -85,17 +86,16 @@ def build_catalogue(images: dict | None = None):
         problem["status"] = "draft"
         rules = (SOURCE / "libero-rules.md").read_text(encoding="utf-8") if runtime_key == "robot-arm" else SCORING
         problem["statement_md"] += "\n\n" + rules
-        problem["judging_schema"] = {"rubric": {"模型或智能体实际表现": .8, "技术路线说明": .2}}
-        problem["scoring_config"] = {"external_weight_percent": 50, "review_score_mode": "weighted", "external_score_label": "现场答辩",
-            "online_score_label": "第一阶段", "stages": competition["config"]["scoring_stages"],
+        problem["judging_schema"] = {"rubric": {"模型或智能体实际表现": 5 / 6, "技术路线说明": 1 / 6}}
+        problem["scoring_config"] = {"external_weight_percent": 40, "review_score_mode": "weighted", "external_score_label": "现场答辩",
+            "online_score_label": "测评与报告", "stages": competition["config"]["scoring_stages"],
+            "report_rubric": {"方案设计": .3, "实现与复现": .3, "结果与局限分析": .3, "引用与团队贡献": .1},
+            "defense_rubric": {"方案介绍": .3, "运行演示": .3, "现场问答": .4},
             "performance_scoring": {"preset": "wujie-world-v1" if runtime_key == "minecraft" else "wujie-libero-v1" if runtime_key else "wujie-depth-v1", "criterion": "模型或智能体实际表现"}}
         if runtime_key == "robot-arm":
             problem["scoring_config"].update(final_evaluation_required=True, external_weight_percent=40,
                 code_review_mode="pass_fail",
-                performance_scoring={"preset": "wujie-libero-v2", "criterion": "模型或智能体实际表现"},
-                stages={"performance_percent": 100, "report_percent": 0,
-                        "first_stage_percent": 60, "defense_percent": 40})
-            problem["judging_schema"] = {"rubric": {"模型或智能体实际表现": 1}}
+                performance_scoring={"preset": "wujie-libero-v2", "criterion": "模型或智能体实际表现"})
         setup = {"evaluation_config": deepcopy(problem["evaluation_config"])}
         if runtime_key and images:
             from evaluation_adapters.minecraft_runner import validate_scenarios as validate_mc

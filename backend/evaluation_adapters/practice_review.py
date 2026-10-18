@@ -12,7 +12,7 @@ def render(root):
     episodes = data.get("episodes", [])
     title = "本地测评完成" if full.exists() else "本地测评中断"
     rows = []
-    public_weights = {"libero-1": 10, "libero-2": 10, "libero-3": 10}
+    public_weights = {"libero-1": 10, "libero-2": 10, "libero-3": 10, "sort-groceries": 15, "table-setting": 15}
     scored = bool(episodes) and all("automatic_score" in e.get("metrics", {}) for e in episodes)
     score_rows = []
     total_points = total_cap = 0.0
@@ -31,7 +31,7 @@ def render(root):
             score_rows.append(f'<tr><td>{html.escape(str(scene.get("label", scene.get("id"))))}</td>'
                               f'<td>{completion:.2f} / {weight}</td><td>{efficiency:.2f} / {weight*2/3:.2f}</td>'
                               f'<td>{completion+efficiency:.2f}</td></tr>')
-    score_table = ('<h2>公开题得分</h2><p>本轮已结束公开题：'
+    score_table = ('<h2>本轮得分</h2><p>本轮已结束任务：'
                    f'{total_points:.2f} / {total_cap:.2f}。全部三道公开题满分50，正式五题满分100。</p>'
                    '<table><tr><th>任务</th><th>完成分</th><th>效率分</th><th>得分</th></tr>'
                    + ''.join(score_rows) + '</table>') if score_rows else ''
@@ -60,7 +60,7 @@ def render(root):
         decisions = []
         index = int(directory.name) - 1 if directory.name.isdigit() else -1
         for event in groups[index] if 0 <= index < len(groups) else []:
-            if event.get('event') not in ('decision', 'skill_result', 'format_error'):
+            if event.get('event') not in ('decision', 'skill_result', 'format_error', 'vision', 'geometry', 'template_localization', 'grasp_rejected', 'placement_check', 'verification_disagreement', 'placement_retry'):
                 continue
             step = event.get('step', 0)
             if type(step) is not int:
@@ -73,13 +73,26 @@ def render(root):
             elif event['event'] == 'skill_result':
                 label = '执行反馈'
                 text = event.get('reason', '')
-                detail = json.dumps({k: event.get(k) for k in ('actual_delta', 'position_error_metres', 'gripper_position')}, ensure_ascii=False)
+                detail = json.dumps({k: event.get(k) for k in ('actual_delta', 'position_error_metres', 'gripper_position', 'gripper_width_metres', 'gripper_command')}, ensure_ascii=False)
+            elif event['event'] != 'format_error':
+                labels = {'vision':'视觉核验', 'geometry':'定位位置', 'template_localization':'图像匹配', 'grasp_rejected':'抓取反馈', 'placement_check':'放置核验', 'verification_disagreement':'判断差异', 'placement_retry':'重试'}
+                label = labels[event['event']]
+                text = event.get('reply', {}).get('evidence', event.get('reason', event.get('phase', '')))
+                detail = json.dumps(event, ensure_ascii=False)
             else:
                 label, text, detail = '格式修正', event.get('error', ''), event.get('response', '')
             jump = f'<button data-video="{html.escape(video_id, quote=True)}" data-time="{max(0,step)/20}">{step}</button>'
             decisions.append(f'<tr><td>{jump}</td><td>{label}</td><td>{html.escape(str(text))}<details><summary>记录</summary><pre>{html.escape(detail)}</pre></details></td></tr>')
         table = '<table><tr><th>步数</th><th>记录</th><th>观察与结果</th></tr>' + ''.join(decisions) + '</table>' if decisions else ''
-        media.append(f'<section><h2>场景 {html.escape(directory.name)}</h2>{player}<p>{links}</p>{table}</section>')
+        target_table = ''
+        trajectory = directory / 'trajectory.json'
+        if trajectory.exists():
+            trajectory_data = json.loads(trajectory.read_text(encoding='utf8'))
+            targets = trajectory_data.get('targets', []) if isinstance(trajectory_data, dict) else []
+            target_rows = ''.join(f"<tr><td>{html.escape(str(t['target']))}</td><td>{'完成' if t['completed'] else '未完成'}</td><td>{t.get('attainment_step') if t.get('attainment_step') is not None else '—'}</td><td>{t.get('reference_steps', '—')}</td></tr>" for t in targets)
+            if target_rows:
+                target_table = '<table><tr><th>目标</th><th>结束状态</th><th>有效达成步数</th><th>参考步数</th></tr>' + target_rows + '</table>'
+        media.append(f'<section><h2>场景 {html.escape(directory.name)}</h2>{player}<p>{links}</p>{target_table}{table}</section>')
     error = root / "error.txt"
     message = f'<pre>{html.escape(error.read_text(encoding="utf-8"))}</pre>' if error.exists() else ''
     records = [p for p in (full, partial, root / "agent/harness.jsonl", root / "scenes.json", root / "practice-config.json") if p.exists()]

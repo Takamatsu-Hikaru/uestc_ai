@@ -582,6 +582,7 @@ def save_review():
             return jsonify({"error": "evaluation must complete before review"}), 409
     try:
         scores = dict(data["scores"])
+        scores.pop("__code_review_passed", None)
         scoring = (version.submission.problem.scoring_config or {}).get("performance_scoring")
         if scoring:
             performance = evaluation.get("performance")
@@ -596,9 +597,8 @@ def save_review():
                 raise ValueError("代码审阅通过制需要自动测评分。")
             if not data["code_review_passed"] and not str(data.get("feedback_md", "")).strip():
                 raise ValueError("不通过时请填写具体原因。")
-            scores = {scoring["criterion"]: performance["score"],
-                      "__code_review_passed": int(data["code_review_passed"])}
-            total_score = performance["score"]
+            total_score = calculate_review_total(version.submission.problem, scores, data.get("total_score"))
+            scores["__code_review_passed"] = int(data["code_review_passed"])
         else:
             total_score = calculate_review_total(version.submission.problem, scores, data.get("total_score"))
     except (TypeError, ValueError) as error:

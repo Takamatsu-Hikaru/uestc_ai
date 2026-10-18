@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -16,10 +17,18 @@ from test_libero_evaluation import Channel, FakeEnv, observation
 import test_launch_readiness as launch_fixtures
 from platform_api.extensions import db
 from platform_api.models import SubmissionVersion
-from platform_api.reviewing import review_score
+from platform_api.reviewing import review_score, combined_score
 
 
 class ScoringTests(unittest.TestCase):
+    def test_control_budgets_are_two_times_reference_and_public_scenes_match(self):
+        path = Path(__file__).resolve().parents[1] / "deploy/libero/final-request.json"
+        scenes = json.loads(path.read_text(encoding="utf-8"))["runtime"]["scenarios"]
+        self.assertEqual([s["max_steps"] for s in scenes], [600, 600, 1200, 1400, 2200])
+        for scene in scenes:
+            self.assertEqual(scene["max_steps"], 2 * max(scene["scoring"]["reference_steps"]))
+        self.assertEqual([s["max_steps"] for s in libero_scenes()], [s["max_steps"] for s in scenes[:3]])
+
     def test_reference_curve_and_two_equal_targets(self):
         for time, expected in ((50, 100), (100, 80), (150, 60), (200, 60)):
             scorer = GoalScore([100, 100])
@@ -127,6 +136,53 @@ class PassFailReviewTests(unittest.TestCase):
     start = launch_fixtures.LaunchTests.start
     formal = launch_fixtures.LaunchTests.formal
     prepare_scoring = launch_fixtures.LaunchTests.prepare_scoring
+
+    def test_report_keeps_its_ten_points_with_code_gate_and_locked_performance(self):
+        self.prepare_scoring()
+        response = self.admin.patch(f"/api/manage/problems/{self.problem['id']}", json={
+            "scoring_config": {"review_score_mode": "weighted", "performance_scoring": self.scoring,
+                               "code_review_mode": "pass_fail", "external_weight_percent": 40},
+            "judging_schema": {"rubric": {"表现": 5 / 6, "报告": 1 / 6}}})
+        self.assertEqual(response.status_code, 200, response.get_json())
+        asset = self.stage()
+        self.assertEqual(self.start(asset).status_code, 201)
+        job = self.claim()
+        result = self.worker.post(f"/api/evaluation-worker/runs/{job['id']}/complete",
+            headers={"X-Evaluation-Lease": job["lease_token"]}, json={"status": "completed", "episodes": [
+                {"task_success": 80, "exploration_progress": 80}]})
+        self.assertEqual(result.status_code, 200, result.get_json())
+        self.assertEqual(result.get_json()["performance"]["score"], 80)
+        version = self.formal(asset, job["id"]).get_json()["version"]["id"]
+        self.login(self.reviewer, "reviewer@uestc.ai")
+        payload = {"submission_version_id": version, "scores": {"表现": 999},
+                   "code_review_passed": True, "total_score": 999, "status": "submitted"}
+        self.assertEqual(self.reviewer.post("/api/reviews", json=payload).status_code, 400)
+        for invalid in (-1, 101, "90"):
+            payload["scores"]["报告"] = invalid
+            self.assertEqual(self.reviewer.post("/api/reviews", json=payload).status_code, 400)
+        payload["scores"] = {"表现": 999, "报告": 90, "__code_review_passed": 1}
+        payload.update(code_review_passed=False, feedback_md="程序读取了隐藏场景文件。")
+        rejected = self.reviewer.post("/api/reviews", json=payload)
+        self.assertEqual(rejected.status_code, 201, rejected.get_json())
+        self.assertEqual(rejected.get_json()["scores"]["__code_review_passed"], 0)
+        with self.app.app_context():
+            record = db.session.get(SubmissionVersion, version)
+            competition_id = record.submission.problem.track.competition_id
+            self.assertIsNone(review_score(record))
+        imported = self.admin.post("/api/scores/import", json={"competition_id": competition_id,
+            "problem_id": self.problem["id"], "source": "onsite-defense", "label": "现场答辩", "status": "confirmed",
+            "records": [{"submission_version_id": version, "total_score": 70}]})
+        self.assertEqual(imported.status_code, 201, imported.get_json())
+        with self.app.app_context():
+            self.assertIsNone(combined_score(db.session.get(SubmissionVersion, version)))
+        payload["code_review_passed"] = True
+        saved = self.reviewer.post("/api/reviews", json=payload)
+        self.assertEqual(saved.status_code, 201, saved.get_json())
+        self.assertEqual(saved.get_json()["scores"]["表现"], 80)
+        self.assertEqual(saved.get_json()["scores"]["报告"], 90)
+        self.assertAlmostEqual(saved.get_json()["total_score"], 490 / 6)
+        with self.app.app_context():
+            self.assertAlmostEqual(combined_score(db.session.get(SubmissionVersion, version))["total_score"], 77)
 
     def test_review_is_a_gate_and_cannot_change_automatic_score(self):
         self.prepare_scoring()
