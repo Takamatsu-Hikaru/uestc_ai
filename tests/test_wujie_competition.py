@@ -33,8 +33,10 @@ class WujieCompetitionTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 201, response.get_json())
                 problem = response.get_json()
                 self.assertEqual(problem["status"], "draft")
-                self.assertEqual(problem["scoring_config"]["external_weight_percent"], 50)
-                self.assertEqual(problem["judging_schema"]["rubric"], {"模型或智能体实际表现": .8, "技术路线说明": .2})
+                self.assertEqual(problem["scoring_config"]["external_weight_percent"],
+                                 40 if track["slug"] == "embodied-agent" else 50)
+                self.assertEqual(problem["judging_schema"]["rubric"], {"模型或智能体实际表现": 1}
+                    if track["slug"] == "embodied-agent" else {"模型或智能体实际表现": .8, "技术路线说明": .2})
                 self.assertEqual(next(a for a in problem["submission_schema"]["attachments"] if a["key"] == "research_report")["min_count"], 0)
                 if track["slug"] == "world-exploration":
                     scenes = track["setup"]["runtime"]["scenarios"]
@@ -45,7 +47,10 @@ class WujieCompetitionTests(unittest.TestCase):
                     self.assertTrue(all(s["initial_inventory"] == [] for s in scenes))
                 if track["slug"] == "embodied-agent":
                     self.assertEqual(problem["evaluation_config"]["adapter"], "libero-agent-v1")
-                    self.assertEqual(problem["scoring_config"]["performance_scoring"]["preset"], "wujie-libero-v1")
+                    self.assertEqual(problem["scoring_config"]["performance_scoring"]["preset"], "wujie-libero-v2")
+                    self.assertEqual(problem["scoring_config"]["code_review_mode"], "pass_fail")
+                    self.assertEqual([s["scoring"]["reference_steps"] for s in track["setup"]["runtime"]["scenarios"]],
+                                     [[300], [300], [600, 600]])
                 self.assertEqual(self.member.get(f"/api/problems/{problem['slug']}").status_code, 404)
                 self.assertNotIn("scenarios", problem["evaluation_config"])
             detail = self.admin.get(f"/api/competitions/{competition['slug']}").get_json()

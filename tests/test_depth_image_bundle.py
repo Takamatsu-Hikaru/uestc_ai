@@ -40,8 +40,13 @@ class DepthImageBundleTests(unittest.TestCase):
                         self.assertIn("允许的模型名称", config["model"])
                         explanation = archive.read("CONFIG.md").decode()
                         self.assertIn("/api-platform", explanation)
-                        self.assertIn('memory: "same-test-only"', explanation)
-                        self.assertIn("平台不读取或校验它", explanation)
+                        if "arm" in package.name:
+                            self.assertIn("reset(goal)", explanation)
+                            self.assertIn("清空该场景的记忆", explanation)
+                            self.assertIn("UESTC_MODEL_API_KEY", explanation)
+                        else:
+                            self.assertIn('memory: "same-test-only"', explanation)
+                            self.assertIn("平台不读取或校验它", explanation)
                         # Compare contents rather than ZIP timestamps, so the
                         # downloadable artifact cannot lag behind its sources.
                         published = Path(__file__).resolve().parents[1] / "public/downloads" / package.name
