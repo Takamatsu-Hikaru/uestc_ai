@@ -58,7 +58,7 @@ def validate_scenarios(scenes, episodes):
                     or not 1 <= len(scene["task_name"]) <= 200))
                 or type(scene["init_state_id"]) is not int or not 0 <= scene["init_state_id"] < 50
                 or type(scene["seed"]) is not int or not 0 <= scene["seed"] < 2**31
-                or type(scene["max_steps"]) is not int or not 1 <= scene["max_steps"] <= 2000):
+                or type(scene["max_steps"]) is not int or not 1 <= scene["max_steps"] <= 4000):
             raise ValueError("无效的 LIBERO 任务或初始状态配置")
         identifiers.add(scene["id"])
 

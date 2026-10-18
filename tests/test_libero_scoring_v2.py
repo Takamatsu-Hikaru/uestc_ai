@@ -18,6 +18,8 @@ import test_launch_readiness as launch_fixtures
 from platform_api.extensions import db
 from platform_api.models import SubmissionVersion
 from platform_api.reviewing import review_score, combined_score
+from platform_api.problem_setup import validate_runtime
+from platform_api.evaluation import validate_evaluation_config
 
 
 class ScoringTests(unittest.TestCase):
@@ -28,6 +30,19 @@ class ScoringTests(unittest.TestCase):
         for scene in scenes:
             self.assertEqual(scene["max_steps"], 2 * max(scene["scoring"]["reference_steps"]))
         self.assertEqual([s["max_steps"] for s in libero_scenes()], [s["max_steps"] for s in scenes[:3]])
+
+    def test_complete_final_request_passes_real_runtime_validation_and_rejects_over_limit(self):
+        path = Path(__file__).resolve().parents[1] / "deploy/libero/final-request.json"
+        request = json.loads(path.read_text(encoding="utf-8"))
+        evaluation = validate_evaluation_config(request["evaluation_config"])
+        runtime = validate_runtime(request["runtime"], evaluation)
+        self.assertEqual(len(runtime["scenarios"]), 5)
+        self.assertEqual(runtime["scenarios"][-1]["max_steps"], 2200)
+        request["runtime"]["scenarios"][-1]["max_steps"] = 4000
+        self.assertEqual(validate_runtime(request["runtime"], evaluation)["scenarios"][-1]["max_steps"], 4000)
+        request["runtime"]["scenarios"][-1]["max_steps"] = 4001
+        with self.assertRaises(ValueError):
+            validate_runtime(request["runtime"], evaluation)
 
     def test_reference_curve_and_two_equal_targets(self):
         for time, expected in ((50, 100), (100, 80), (150, 60), (200, 60)):

@@ -1,7 +1,7 @@
 {
-  "scene_set_version": "libero-five-20261018-v3-clearance",
+  "scene_set_version": "libero-five-20261018-v4-budget2b",
   "runtime": {
-    "image": "sha256:233f93cdc786b78aed8f5b8348055985243ca856bfbfa2a436e9cc15dfe22408",
+    "image": "sha256:860486aa7bc272412ba73bdabbbbef6fdd9cb6213e0af8d7795433a87f837d51",
     "agent_image": "sha256:923f54c25f6c7f15b59b35bbc062e452320c54dde8e599321ff55be70eb901a8",
     "scenarios": [
       {

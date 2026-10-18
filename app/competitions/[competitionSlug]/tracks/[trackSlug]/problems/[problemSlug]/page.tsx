@@ -28,7 +28,7 @@ export default function ProblemPage() {
   const { data: registrations, loading: registrationsLoading } = useApiResource<Registration[]>(user ? "/me/registrations" : null);
   const weighted = data?.scoring_config.review_score_mode === "weighted";
   const onlineWeight = 100 - (data?.scoring_config.external_weight_percent ?? 0);
-  const rubricEntries = Object.entries(data?.judging_schema.rubric ?? {});
+  const rubricEntries = Object.entries(data?.judging_schema.rubric ?? {}).sort((a, b) => weighted ? b[1] - a[1] : 0);
   const finalScoreParts = rubricEntries.map(([name, weight]) => `${scoreLabels[name] ?? name} ×${Number((weight * onlineWeight).toFixed(2))}%`);
   const registered = Boolean(registrations?.some((item) => item.competition_id === data?.competition.id && (item.track_id === data?.track.id || item.track_id === null)));
   const callout = !user
@@ -49,8 +49,8 @@ export default function ProblemPage() {
               <h2>{weighted ? "最终成绩构成" : data.scoring_config.online_score_label ? `${data.scoring_config.online_score_label}评分构成` : "评分构成"}</h2>
               {data.scoring_config.external_score_label && <p>最终成绩：{weighted ? finalScoreParts.join(" ＋ ") : `${data.scoring_config.online_score_label || "在线评审"} ×${onlineWeight}%`} ＋{data.scoring_config.external_score_label} ×{data.scoring_config.external_weight_percent ?? 0}%。</p>}
               <div className="rubric-list">
-                {rubricEntries.map(([name, weight]) => <div key={name}><span>{scoreLabels[name] ?? fieldLabels[name] ?? name}</span><i /><strong>{weighted ? `计入总成绩 ${Number((weight * onlineWeight).toFixed(2))} 分` : `${Math.round(weight * 100)}%`}</strong></div>)}
-                {weighted && data.scoring_config.external_score_label && <div><span>{data.scoring_config.external_score_label}</span><i /><strong>计入总成绩 {data.scoring_config.external_weight_percent ?? 0} 分</strong></div>}
+                {rubricEntries.map(([name, weight]) => <div key={name}><span>{scoreLabels[name] ?? fieldLabels[name] ?? name}</span><i /><strong>{weighted ? `${Number((weight * onlineWeight).toFixed(2))} 分` : `${Math.round(weight * 100)}%`}</strong></div>)}
+                {weighted && data.scoring_config.external_score_label && <div><span>{data.scoring_config.external_score_label}</span><i /><strong>{data.scoring_config.external_weight_percent ?? 0} 分</strong></div>}
               </div>
             </section>
           </div>
