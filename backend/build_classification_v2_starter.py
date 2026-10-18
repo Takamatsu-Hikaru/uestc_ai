@@ -5,6 +5,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from install_classification_v2_data import sha256
+from classification_v2_student_runtime import RUNTIME_FILES
 
 ROOT = Path(__file__).resolve().parent
 
@@ -41,11 +42,15 @@ def build(baseline, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'x', zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(files.items()):
+            if name in RUNTIME_FILES:
+                raise ValueError('Baseline export must leave shared runtime files to the package builder')
             archive.write(path, name)
+        for name, text in RUNTIME_FILES.items():
+            archive.writestr(name, text)
         archive.write(baseline / 'manifest.json', 'baseline-manifest.json')
         for name in ('install_classification_v2_shards.py', 'install_classification_v2_data.py',
                      'upload_classification_weights.py', 'check_classification_submission.py',
-                     'prepare_classification_submission.py'):
+                     'prepare_classification_submission.py', 'prepare_classification_inference_config.py'):
             archive.write(ROOT / name, name)
         archive.writestr('evaluation_adapters/__init__.py', '')
         archive.write(ROOT / 'evaluation_adapters/depth_ir_dataset.py', 'evaluation_adapters/depth_ir_dataset.py')

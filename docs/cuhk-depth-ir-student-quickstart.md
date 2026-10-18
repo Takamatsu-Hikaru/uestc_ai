@@ -47,10 +47,11 @@ python training/train_raw.py --cache runs/cache-16 --pretrained weights/pretrain
 
 ## 验证与分析
 
-experiment-config.json 对应上述实验的 last_ema.pt；使用 best_ema.pt 时修改其中的 weights_file。
+根据训练缓存和选定权重生成 config.json，验证与提交共用这份配置。使用 best_ema.pt 时，把命令中的权重路径替换为该文件。
 
 ```bash
-python predict.py --dataset data/validation --config experiment-config.json --output predictions.csv
+python prepare_classification_inference_config.py --cache runs/cache-16 --weights runs/experiment-16/last_ema.pt --output config.json
+python predict.py --dataset data/validation --config config.json --output predictions.csv
 python analyze_predictions.py --predictions predictions.csv --manifest data/validation/manifest.json --output analysis/experiment-16
 python preview_sample.py --dataset data/validation --sample-id 样本ID --output analysis/preview.png
 ```
@@ -59,9 +60,9 @@ analysis/experiment-16/report.html 展示准确率、各类表现和错例。样
 
 ## 实验设置
 
-32帧：缓存命令改为 --frames 32，设置新的缓存和实验目录，预测使用 experiment-32-config.json。
+32帧：缓存命令改为 --frames 32，设置新的缓存和实验目录，再用对应缓存与权重生成 config.json。
 
-人物裁剪：安装 pip install -r requirements-crop.txt，缓存命令加入 --person-crop --yolo-weights yolo11n.pt --device cpu。推理配置相应设置 person_crop 为 true、detector_file 为 yolo11n.pt，并填写该实验的权重路径。
+人物裁剪：安装 pip install -r requirements-crop.txt，缓存命令加入 --person-crop --yolo-weights yolo11n.pt --device cpu。生成配置时加入 --detector yolo11n.pt；脚本读取缓存中的裁剪设置，并核对检测器权重。
 
 缓存、训练与推理使用相同的帧数、分辨率和裁剪设置。
 
@@ -77,7 +78,13 @@ python check_classification_submission.py inference.zip --weights runs/experimen
 
 上传脚本生成 weights-reference.json。打包脚本将该记录写入 ZIP 内 config.json 的 weights_asset，保留本地配置。网页附件区上传 inference.zip；分类器权重通过上传脚本单独提交。
 
-config.json 的帧数、尺寸和裁剪设置应与所上传权重一致。人物裁剪所用 yolo11n.pt 已在开发包中，设置 detector_file 后会一并打包。自定义依赖文件使用 --include 子目录/文件 加入。训练代码可通过技术说明中的代码仓库与版本提供。
+可在提交前用一个验证片段试运行实际 ZIP：
+
+```bash
+python check_classification_submission.py inference.zip --weights runs/experiment-16/last_ema.pt --sample data/validation/样本目录
+```
+
+样本目录取自 validation/manifest.json 的 file 字段。检查会加载 ZIP 中的模型并执行预测，不占官网自测次数。更换实验后，用新缓存和权重重新生成 config.json。人物裁剪所用 yolo11n.pt 已在开发包中，设置 detector_file 后会一并打包。自定义依赖文件使用 --include 子目录/文件 加入。训练代码可通过技术说明中的代码仓库与版本提供。
 
 官网发起自测后，查看指标并选择一条完成结果，再以相同代码ZIP和权重正式提交。验证集预测提交 predictions.csv，列名为 sample_id,predicted_class。技术说明填写作品 README，参数统计填写“推理模型与参数量”。
 

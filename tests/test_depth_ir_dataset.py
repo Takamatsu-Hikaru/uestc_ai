@@ -210,6 +210,10 @@ for line in sys.stdin:
         with zipfile.ZipFile(package) as archive:
             self.assertIn('install_classification_v2_shards.py', archive.namelist())
             self.assertIn('preview_sample.py', archive.namelist())
+            self.assertIn('setup.sh', archive.namelist())
+            self.assertIn('timm==1.0.27', archive.read('requirements.txt').decode())
+            self.assertIn('safetensors==0.8.0', archive.read('requirements.txt').decode())
+            self.assertIn('ModelEmaV3', archive.read('check_environment.py').decode())
             self.assertEqual(json.loads(archive.read('config.json'))['weights_file'], 'baseline.pt')
         (baseline / 'manifest.json').write_text(json.dumps({'files': [r for r in records if r['path'] != 'training/build_cache.py']}))
         with self.assertRaisesRegex(ValueError, 'missing training'):
