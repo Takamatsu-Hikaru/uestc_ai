@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import stat
+import sys
 import urllib.parse
 import urllib.request
 import zipfile
@@ -77,17 +78,19 @@ def download_shard(base_url, item, cache):
     return target
 
 
-def install_shards(index, archives, output, split):
+def install_shards(index, archives, output, split, progress=None):
     """Install only the requested split, preserving a failed staging directory for diagnosis."""
     validate_index(index)
     if split not in ('train', 'validation'):
         raise ValueError('Select train or validation')
     archives, output = Path(archives), Path(output)
     selected = sorted((s for s in index['archives'] if s['file'].startswith(split + '-')), key=lambda s: s['file'])
-    for item in selected:
+    for number, item in enumerate(selected, 1):
         source = archives / item['file']
         if source.is_symlink() or source.stat().st_size != item['bytes'] or sha256(source) != item['sha256']:
             raise ValueError('Shard SHA256/size mismatch')
+        if progress:
+            progress('verified archives', number, len(selected))
     temporary = output.with_name(output.name + '.installing')
     if output.exists() or temporary.exists():
         raise FileExistsError('Use a new dataset version directory')
@@ -95,7 +98,7 @@ def install_shards(index, archives, output, split):
     temporary.chmod(0o700)
     seen, total = set(), 0
     pattern = re.compile(r'[A-Za-z0-9_-]{1,100}/(?:Depth_Color|IR)/[A-Za-z0-9_.-]{1,160}\.png')
-    for item in selected:
+    for number, item in enumerate(selected, 1):
         with zipfile.ZipFile(archives / item['file']) as archive:
             for entry in archive.infolist():
                 name = entry.filename
@@ -115,10 +118,15 @@ def install_shards(index, archives, output, split):
                     while chunk := source.read(1024 * 1024):
                         destination.write(chunk)
                 target.chmod(0o600)
+        if progress:
+            progress('extracted archives', number, len(selected))
     manifest = temporary / 'manifest.json'
     if sha256(manifest) != index['splits'][split]['manifest_sha256']:
         raise ValueError('Split manifest SHA256 mismatch')
-    data = validate_manifest(temporary, json.loads(manifest.read_text(encoding='utf-8')))
+    def sample_progress(done, count):
+        if progress and (done == 1 or done % 100 == 0 or done == count):
+            progress('verified clips', done, count)
+    data = validate_manifest(temporary, json.loads(manifest.read_text(encoding='utf-8')), on_sample=sample_progress)
     if len(data['samples']) != index['splits'][split]['count']:
         raise ValueError('Split sample count mismatch')
     if {p.name for p in temporary.iterdir()} != {'manifest.json', 'provenance.json', *(s['file'] for s in data['samples'])}:
@@ -142,7 +150,9 @@ def main():
         for item in index['archives']:
             if item['file'].startswith(args.split + '-'):
                 download_shard(args.download_base_url, item, args.archives)
-    print(json.dumps(install_shards(index, args.archives, args.output, args.split)))
+    def progress(stage, done, count):
+        print(f'{args.split}: {stage} {done}/{count}', file=sys.stderr, flush=True)
+    print(json.dumps(install_shards(index, args.archives, args.output, args.split, progress=progress)))
 
 
 if __name__ == '__main__':

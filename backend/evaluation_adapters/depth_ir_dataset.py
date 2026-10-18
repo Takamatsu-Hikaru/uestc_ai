@@ -74,7 +74,7 @@ def clip_digest(directory, verify_images=False):
     return digest.hexdigest()
 
 
-def validate_manifest(directory, data):
+def validate_manifest(directory, data, on_sample=None):
     if (not isinstance(data, dict) or set(data) != {'version', 'classes', 'modality', 'samples'} or data['version'] != 2
             or data['modality'] != 'depth_ir' or not isinstance(data['classes'], list)
             or len(data['classes']) != 40
@@ -92,6 +92,8 @@ def validate_manifest(directory, data):
         seen.add(sample['file'])
         if clip_digest(Path(directory) / sample['file'], verify_images=True) != sample['sha256']:
             raise ValueError('Depth/IR clip SHA256 mismatch')
+        if on_sample:
+            on_sample(len(seen), len(data['samples']))
     return data
 
 
