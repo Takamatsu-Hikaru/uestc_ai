@@ -70,6 +70,8 @@ python -m unittest discover -s tests -p test_depth_ir_dataset.py -v
 python -m unittest discover -s tests -p 'test_classification*.py' -v
 ```
 
+`test_classification_v2_submission_api.py` 使用真实 Flask 路由和临时 SQLite 数据库，覆盖学生上传 ZIP、发起自测、保存 runtime 与代码包快照、worker 领取和下载、正式提交及成绩查询。旧镜像或数据 SHA 不匹配时无法领取任务；缺少模型参数声明时正式提交被拒绝；上传的 HTTPS 权重描述在 worker 收到的 ZIP 中保持一致。该测试向完成接口注入固定指标，验证项目成果计分和入库；实际模型推理由下面的 Linux GPU 验收完成。HTTPS 权重下载和浏览器页面操作另行验收。
+
 真实模型的 Linux GPU 验收：
 
 ```bash
