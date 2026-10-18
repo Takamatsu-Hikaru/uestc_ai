@@ -65,11 +65,16 @@
     "manifest_sha256": null
   },
   "baseline": {
-    "weight_sha256": null,
-    "validation_accuracy": null,
-    "training_seconds": null,
-    "peak_vram_mb": null,
-    "cost_yuan": null
+    "weight_sha256": "a4e19dbb6d6cef9107d6cd69e80ea15c8593c36e1fa4544ecef033478ae024c5",
+    "validation_accuracy": 63.94849785407725,
+    "training_seconds": 833.3178260326385,
+    "peak_vram_mb": 9962.46630859375,
+    "cost_yuan": null,
+    "run": "compact-depth-ir-full-r34-16frames",
+    "weight_bytes": 254409236,
+    "checkpoint_selection": "last",
+    "validation_macro_f1": 57.54020469871512,
+    "inference_pipeline_parameters": 63514700
   },
   "data": {
     "archive_bytes": 4904189280,
@@ -82,5 +87,23 @@
     "max_assets": 32,
     "chunk_bytes": 16777216
   },
-  "release_note": "null项由实际验收填写。本文件是交接模板，不是可直接调用的上线API请求。现有提交保留原题/原runtime/原规则。"
+  "release_note": "null项由实际验收填写。本文件是交接模板，不是可直接调用的上线API请求。现有提交保留原题/原runtime/原规则。",
+  "scoring_calibration": {
+    "status": "pending_private_test_and_target_gpu_measurement",
+    "responsibility": "Measured and filled by the implementation team; these are not numeric inputs requested from the organizer.",
+    "frozen_baseline_weights_sha256": "a4e19dbb6d6cef9107d6cd69e80ea15c8593c36e1fa4544ecef033478ae024c5",
+    "baseline_accuracy": {
+      "source": "Run the frozen exported baseline on all 470 organizer test clips once; use its accuracy in percent.",
+      "status": "not_measured"
+    },
+    "gain_span_pp": {
+      "source": "Compute min(15, 100 - measured baseline_accuracy).",
+      "status": "derived_after_baseline_accuracy"
+    },
+    "latency_ms": {
+      "source": "Run the same full inference ZIP on the public validation set three times on the designated evaluation GPU; use the median of the three mean per-clip latencies.",
+      "status": "not_measured"
+    },
+    "completion": "Populate performance_scoring.reference with the measured numbers and retain runner, GPU, dataset, package and weight hashes."
+  }
 }
