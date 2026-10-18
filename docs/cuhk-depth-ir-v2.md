@@ -1,24 +1,17 @@
 # A 题深度图＋IR 数据与运行环境
 
-新版数据使用同步的伪彩深度图（RGB）和红外图（8 位灰度）。每段最多保留 32 帧，分辨率为 304×228，保留完整画面。训练集 1,995 段、验证集 466 段，类别顺序和人物划分沿用原版。下载包共 20 个分卷，合计 4,903,456,146 字节（约 4.90 GB）；数据索引记录每个分卷的大小与 SHA256。baseline 成绩随最终权重发布。
+新版数据使用同步的伪彩深度图（RGB）和红外图（8 位灰度）。每段最多保留 32 帧，分辨率为 304×228，保留完整画面。训练集 1,995 段、验证集 466 段，类别顺序和人物划分沿用原版。学生下载包为 `wujie-classification-depth-ir-data.zip`，4,904,189,280 字节（约 4.90 GB）。
 
 ## 数据下载与安装
 
-公开目录提供 `dataset-index.json`、对应 SHA256、`train-000.zip` 等分卷及 `validation-000.zip` 等分卷。每个分卷最多包含 128 段；首分卷包含该集合的 `manifest.json` 和 `provenance.json`。索引中的 `archives[].file` 是相对于下载目录的 URL。索引不包含服务器路径、凭据或测试集。
+下载数据 ZIP 与 `wujie-classification-dev.zip`，解压开发包后，在开发包目录执行：
 
 ```bash
-python backend/install_classification_v2_shards.py \
-  --index dataset-index.json --index-sha256 "$INDEX_SHA256" \
-  --download-base-url "$DATA_DOWNLOAD_BASE_URL" --archives ./downloads \
-  --split train --output ./data/compact-depth-ir-v1/train
-
-python backend/install_classification_v2_shards.py \
-  --index dataset-index.json --index-sha256 "$INDEX_SHA256" \
-  --download-base-url "$DATA_DOWNLOAD_BASE_URL" --archives ./downloads \
-  --split validation --output ./data/compact-depth-ir-v1/validation
+python -m zipfile -e ../wujie-classification-depth-ir-data.zip data
+python training/prepare_training_manifest.py --data data --output runs/raw-manifest.json
 ```
 
-已下载分卷会验证后复用。手工下载分卷后可省略 `--download-base-url`。安装器检查包大小、包哈希、清单哈希、片段哈希、帧号配对和图像格式，完整校验通过后才生成目标目录。
+数据 ZIP 的 SHA256 为 `fe0865bbda42f646a06dab220d29e147a83834c8223281cc80cd7a79249f41d1`。解压后得到 `data/train` 和 `data/validation`，清单与两模态图像一并保留。现有分卷安装器继续供组织方传输、校验和部署使用。
 
 `manifest.json` 使用严格 v2 格式：顶层为 `version/classes/modality/samples`，每条样本为 `file/label/sha256`。`file` 指向包含 `Depth_Color/`、`IR/` 的目录。来源、原样本 ID 和采样方式放在 `provenance.json` 中。
 
@@ -26,7 +19,11 @@ python backend/install_classification_v2_shards.py \
 
 使用公开预训练权重微调，R(2+1)D-34 是候选 baseline。人物裁剪使用 YOLO；分类器、检测器等全部推理模型合计不超过 100M 参数。最终取帧数、裁剪设置和实测成绩随选定的 baseline 发布。
 
-`build_classification_v2_starter.py` 接收通过真实验证的导出目录，校验文件哈希后打包。包内包括本地权重、训练代码、数据安装器、预测和错例分析。旧版 `wujie-classification-starter.zip` 保持原样，新包使用独立版本文件名。
+学生开发包 `wujie-classification-dev.zip` 提供 `setup.sh`、固定依赖版本、预训练权重下载、微调、验证、错例分析和样本预览。`setup.sh` 在 Linux/WSL 上创建 Python 3.10 虚拟环境，安装 PyTorch 2.5.1+cu118、torchvision 0.20.1+cu118、NumPy 2.2.6、Pillow 12.2.0，并检查 GPU。训练环境沿用本次 A100/H800 实验配置，也适用于 AutoDL RTX 4090。
+
+数据和开发包分别下载，步骤见 `docs/cuhk-depth-ir-student-quickstart.md`。学生可以自行开 GPU 实例安装普通 Python 环境。组织方测评 worker 的部署配置另见下节。
+
+`build_classification_v2_starter.py` 用于导出附带实测 baseline 权重的版本；现有开发包通过脚本下载公开预训练权重，在比赛训练集上微调。
 
 ```bash
 python backend/build_classification_v2_starter.py \
@@ -42,22 +39,22 @@ python backend/build_classification_v2_starter.py \
 
 线上 `wujie-depth-v1` 计分保留。v2 候选增加 `wujie-depth-baseline-v2`：基准60＋提升20＋Macro F1项10＋效率项10，定义见 `docs/cuhk-depth-ir-v2-scoring.md`。只有新题显式配置该版本与实测参考值才会启用；历史自测继续使用原计分快照。首样本计入准确率，作为计时预热；之后计时包含选手图像读取、预处理、检测、分类、CUDA 同步和进程通信。数据向隔离目录的复制属于组织方准备时间。
 
-## 镜像与发布配置
+## 组织方测评环境与发布配置
 
-训练与评测镜像使用相同 Python、PyTorch、torchvision、Pillow、NumPy 和 ultralytics 版本。`build_classification_image_manifest.py --profile depth-ir-v2` 将这些依赖及检测器依赖加入环境封存记录，worker 启动时逐项核验。
+学生开发环境与组织方测评环境使用匹配的 Python、PyTorch、torchvision、Pillow 和 NumPy 版本；使用人物裁剪时同时安装对应版本的 ultralytics。`build_classification_image_manifest.py --profile depth-ir-v2` 将这些依赖及检测器依赖加入环境封存记录，worker 启动时逐项核验。
 
 `autodl-depth-ir-v2-install.sh` 用于新的镜像构建实例：Python 3.10、PyTorch 2.5.1+cu118、torchvision 0.20.1+cu118、NumPy 2.2.6、Pillow 12.2.0、ultralytics 8.3.228、headless OpenCV 4.13.0.92，与本轮 baseline 的核心环境对齐。通过 `CLASSIFICATION_BASELINE_ZIP` 和 `CLASSIFICATION_BASELINE_SHA256` 安装已验证的开发包。脚本拒绝覆盖已有 runtime 和 starter，安装后保存完整依赖版本。
 
 | 配置 | v2 发布要求 |
 |---|---|
-| 训练渠道 | 新建 provider，填写实际保存的训练镜像 UUID；已有实例的旧 provider 保留 |
+| 学生开发 | 下载数据ZIP与Python开发包，自行选择GPU实例；若另提供预装训练镜像，使用独立provider |
 | 评测镜像 | 安装 v2 数据读取与模型依赖，保存新镜像并恢复验收 |
 | 数据版本 | 新 dataset ID 与固定 manifest SHA，旧 NPY 数据目录保留 |
 | 题目 runtime | `execution=autodl-native`；镜像 UUID、dataset ID 和 SHA 与 JudgePool、worker 完全相同 |
 | 历史提交 | 已有提交的题目禁止直接替换 runtime；使用 v2 草稿验收，切换入口时保留旧题与旧提交 |
 | 静态文件 | 发布版本文件名；核对实际服务的 `dist/client/downloads` 与 `public/downloads` 哈希 |
 
-新镜像 UUID、资源入口和最终成绩在发布验收时填写。数据、baseline、环境和题面作为同一个版本发布。
+评测镜像 UUID、数据版本与计分参考值在开放官网自测前固定。数据ZIP和Python开发包按各自版本交付，baseline权重与成绩随实测结果补充。
 
 组织方最终测试集另行转换到相同的同步抽帧、分辨率和模态规范。`prepare_depth_ir_dataset.py --compact` 从完整原帧取最多32个均匀位置（NumPy linspace后round），深度与IR使用同一索引，Pillow BILINEAR缩放至304×228、PNG压缩等级6；生成严格v2清单与采样sidecar。该处理与已发布候选学生包一致。再由 `install_classification_v2_data.py` 以包 SHA、manifest SHA 安装到私有版本目录。测试标签及来源清单只留在组织方；正式模型比较和调参使用公开验证集。测试集不装入学生下载包或训练镜像。
 
