@@ -171,8 +171,28 @@ class GPUUsage:
             self.stopped.wait(0.1)
 
 
+def install_uploaded_weights(config, program, trusted_weights=None, weight_reference=None):
+    """Only the trusted worker can supply a file; submitted paths are ignored."""
+    ref = config.get('weights_asset')
+    if ref is None:
+        if trusted_weights is not None or weight_reference is not None:
+            raise ValueError('weight snapshot does not match package')
+        return
+    if (not isinstance(ref, dict) or ref != weight_reference or trusted_weights is None
+            or any(key in config for key in ('weights', 'weights_file', 'weights_path'))):
+        raise ValueError('uploaded weights require the matching trusted snapshot')
+    source = Path(trusted_weights)
+    if source.is_symlink() or not source.is_file() or source.stat().st_size != ref['size'] or digest_file(source) != ref['sha256']:
+        raise ValueError('uploaded model weights failed size/SHA256 verification')
+    target = program / 'weights.bin'
+    shutil.copyfile(source, target)
+    target.chmod(0o644)
+    config['weights_path'] = str(target)
+
+
 def evaluate(package: Path, dataset: Path, manifest_digest: str, output: Path, *, gpu: str,
-             seconds=1800, memory_mb=6144, cpus=4, uid=20000, model_hosts=(), cancelled=None):
+             seconds=1800, memory_mb=6144, cpus=4, uid=20000, model_hosts=(), cancelled=None,
+             trusted_weights=None, weight_reference=None):
     import psutil
     if os.geteuid() != 0:
         raise RuntimeError("run the trusted controller as root on an organizer-only instance")
@@ -251,6 +271,7 @@ def evaluate(package: Path, dataset: Path, manifest_digest: str, output: Path, *
     try:
         config = extract_package(package, program)
         config["package_dir"] = str(program)
+        install_uploaded_weights(config, program, trusted_weights, weight_reference)
         local_weights = config.get("weights_file")
         if local_weights is not None:
             if (not isinstance(local_weights, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,120}", local_weights)

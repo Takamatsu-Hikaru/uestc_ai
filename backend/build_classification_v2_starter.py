@@ -43,10 +43,14 @@ def build(baseline, output):
         for name, path in sorted(files.items()):
             archive.write(path, name)
         archive.write(baseline / 'manifest.json', 'baseline-manifest.json')
-        for name in ('install_classification_v2_shards.py', 'install_classification_v2_data.py'):
+        for name in ('install_classification_v2_shards.py', 'install_classification_v2_data.py',
+                     'upload_classification_weights.py', 'check_classification_submission.py',
+                     'prepare_classification_submission.py'):
             archive.write(ROOT / name, name)
         archive.writestr('evaluation_adapters/__init__.py', '')
         archive.write(ROOT / 'evaluation_adapters/depth_ir_dataset.py', 'evaluation_adapters/depth_ir_dataset.py')
+        for name in ('classification_runner.py', 'classification_assets.py'):
+            archive.write(ROOT / 'evaluation_adapters' / name, 'evaluation_adapters/' + name)
     return {'file': output.name, 'bytes': output.stat().st_size, 'sha256': sha256(output)}
 
 
