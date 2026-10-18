@@ -10,6 +10,11 @@ import shutil
 def configure(cache, weights, output, detector=None):
     cache, weights, output = Path(cache), Path(weights).resolve(), Path(output).resolve()
     meta = json.loads((cache / 'manifest.json').read_text(encoding='utf-8'))
+    training_record = weights.parent / 'metadata.json'
+    if training_record.is_file():
+        expected = json.loads(training_record.read_text(encoding='utf-8')).get('cache_manifest_sha256')
+        if expected and hashlib.sha256((cache / 'manifest.json').read_bytes()).hexdigest() != expected:
+            raise ValueError('Selected weights were trained with a different cache manifest')
     shape = meta['shape_per_sample']
     if (len(shape) != 4 or shape[0] not in (3, 4) or shape[2] != shape[3]
             or any(type(x) is not int or x <= 0 for x in shape)

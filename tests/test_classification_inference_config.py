@@ -35,6 +35,12 @@ class InferenceConfigTests(unittest.TestCase):
             config = configure(cache, weights, out)
             self.assertEqual((config['channels'], config['frames'], config['size']), (3, 16, 112))
             self.assertNotIn('detector_file', config)
+            (weights.parent / 'metadata.json').write_text(json.dumps({'cache_manifest_sha256': '0' * 64}))
+            with self.assertRaisesRegex(ValueError, 'different cache'):
+                configure(cache, weights, out)
+            (weights.parent / 'metadata.json').write_text(json.dumps({
+                'cache_manifest_sha256': hashlib.sha256((cache / 'manifest.json').read_bytes()).hexdigest()}))
+            self.assertEqual(configure(cache, weights, out)['frames'], 16)
 
 
 if __name__ == '__main__':

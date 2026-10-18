@@ -34,6 +34,9 @@ def build(baseline, output):
                 'training/ig65m_backbone.py', 'training/depth_ir_io.py', 'training/make_manifest.py'}
     if not required <= set(files):
         raise ValueError('Baseline export is missing training, prediction, or analysis files')
+    for name in ('raw_model.py', 'ig65m_backbone.py', 'depth_ir_io.py', 'build_cache.py'):
+        if files[name].read_bytes() != files['training/' + name].read_bytes():
+            raise ValueError('Training and inference source differ: ' + name)
     config = json.loads((baseline / 'config.json').read_text(encoding='utf-8'))
     if config.get('input_version') != 2 or config.get('weights_file') != 'baseline.pt':
         raise ValueError('Student package requires the local version-2 weights configuration')

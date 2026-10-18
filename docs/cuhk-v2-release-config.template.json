@@ -1,0 +1,86 @@
+{
+  "status": "candidate_not_applied",
+  "problem_patch": {
+    "statement_file": "backend/competitions/wujie-cup-2026/classification-depth-ir-v2.md",
+    "scoring_config": {
+      "external_weight_percent": 40,
+      "external_score_label": "答辩",
+      "online_score_label": "第一阶段",
+      "review_score_mode": "weighted",
+      "stages": {
+        "first_stage_percent": 60,
+        "defense_percent": 40,
+        "performance_percent": 83.33333333333333,
+        "report_percent": 16.666666666666668
+      },
+      "performance_scoring": {
+        "preset": "wujie-depth-baseline-v2",
+        "criterion": "模型或智能体实际表现",
+        "reference": {
+          "baseline_accuracy": null,
+          "gain_span_pp": null,
+          "latency_ms": null
+        }
+      }
+    },
+    "judging_schema": {
+      "rubric": {
+        "模型或智能体实际表现": 0.8333333333333334,
+        "技术路线说明": 0.16666666666666666
+      }
+    },
+    "evaluation_config": {
+      "adapter": "classification-v1",
+      "task": "classification",
+      "max_team_runs": 3,
+      "resources": {
+        "cpus": 4,
+        "memory_mb": 6144,
+        "gpu": true,
+        "time_seconds": 1800,
+        "episodes": 1
+      },
+      "api": {
+        "enabled": false,
+        "max_calls": 0
+      },
+      "metrics": [
+        "accuracy",
+        "macro_f1",
+        "latency_ms",
+        "peak_vram_mb"
+      ]
+    }
+  },
+  "compute_policy": {
+    "max_cost_millis": 100000,
+    "max_gpu_seconds": null,
+    "provider_id": null,
+    "note": "每队100元；GPU秒数按实际单价换算，避免保留旧10小时上限；provider指向新训练镜像。"
+  },
+  "runtime": {
+    "execution": "autodl-native",
+    "image": null,
+    "dataset_id": null,
+    "manifest_sha256": null
+  },
+  "baseline": {
+    "weight_sha256": null,
+    "validation_accuracy": null,
+    "training_seconds": null,
+    "peak_vram_mb": null,
+    "cost_yuan": null
+  },
+  "data": {
+    "archive_bytes": 4904189280,
+    "archive_sha256": "fe0865bbda42f646a06dab220d29e147a83834c8223281cc80cd7a79249f41d1",
+    "public_download_base_url": null
+  },
+  "weight_upload": {
+    "enabled_after_migration": true,
+    "team_bytes": 8589934592,
+    "max_assets": 32,
+    "chunk_bytes": 16777216
+  },
+  "release_note": "null项由实际验收填写。本文件是交接模板，不是可直接调用的上线API请求。现有提交保留原题/原runtime/原规则。"
+}

@@ -53,5 +53,26 @@ class BaselineScoreAPITests(unittest.TestCase):
         self.assertAlmostEqual(review.get_json()["total_score"], 80.8)
 
 
+class ReleaseScoreWeightsTests(unittest.TestCase):
+    def test_release_config_composes_objective_report_and_defense(self):
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from platform_api.reviewing import calculate_review_total, combined_score
+        from platform_api.performance_scoring import validate_problem_scoring
+        config = json.loads((Path(__file__).resolve().parents[1] / "docs/cuhk-v2-release-config.template.json").read_text("utf-8"))["problem_patch"]
+        # Deployment fills measured references; weights come unchanged from the release template.
+        config["scoring_config"]["performance_scoring"]["reference"] = {"baseline_accuracy": 60, "gain_span_pp": 15, "latency_ms": 100}
+        validate_problem_scoring(config["scoring_config"], config["evaluation_config"], config["judging_schema"])
+        problem = SimpleNamespace(scoring_config=config["scoring_config"], judging_schema=config["judging_schema"])
+        version = SimpleNamespace(submission=SimpleNamespace(problem=problem))
+        for objective, report, defense, expected in [(100,0,0,50), (0,100,0,10), (0,0,100,40), (100,100,100,100), (81,80,90,84.5)]:
+            with self.subTest(objective=objective, report=report, defense=defense):
+                stage = calculate_review_total(problem, {"模型或智能体实际表现": objective, "技术路线说明": report})
+                with patch("platform_api.reviewing.review_score", return_value={"total_score": stage, "reviewed_count": 1, "reviewer_count": 1}), patch("platform_api.reviewing.latest_external_score", return_value=SimpleNamespace(total_score=defense)):
+                    result = combined_score(version)
+                self.assertAlmostEqual(result["total_score"], expected)
+
+
 if __name__ == "__main__":
     unittest.main()
